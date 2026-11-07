@@ -15,7 +15,7 @@
   <a class="skip-link" href="#main">Skip to content</a>
 
   <!-- ============ NAVBAR: floating pill ============ -->
-  <header class="site-nav" id="site-nav">
+  <header class="site-nav" id="site-nav" data-theme="light">
     <a class="nav-logo" href="#top" data-modal="home">
       <svg class="nav-mark" viewBox="0 0 32 32" aria-hidden="true">
         <circle cx="16" cy="16" r="12" />
@@ -25,11 +25,11 @@
     </a>
     <nav class="nav-links" id="nav-links" aria-label="Primary">
       <a href="#top" data-modal="home">Home</a>
-<a href="#" data-modal="components">Components</a>
+<a href="#components" data-modal="components">Components</a>
       <a href="#specs" data-modal="specs">Specs</a>
-      <a href="#live" data-modal="status">Live Status</a>
+      <a href="#live-status" data-modal="status">Live Status</a>
     </nav>
-    <a class="nav-cta" href="mailto:hello@agripal.xyz">Get in touch</a>
+    <a class="nav-cta" href="#contact" data-contact>Get in touch</a>
     <button class="nav-burger" id="nav-burger" aria-expanded="false" aria-controls="nav-links" aria-label="Toggle navigation">
       <span></span><span></span><span></span>
     </button>
@@ -41,20 +41,29 @@
     <section class="hero moodboard">
       <div class="mg-blobs" aria-hidden="true"><i></i><i></i><i></i></div>
 
+      <!-- hand-drawn accents (direct children of hero, centred % of hero container) -->
+      <div class="doodle-wrap aster" style="left: 30%; top: 24%;"><svg class="doodle-svg" viewBox="0 0 60 60" fill="none" aria-hidden="true">
+        <path d="M30 2v56M2 30h56M10 10l40 40M50 10L10 50" stroke-width="4" stroke-linecap="round"/>
+      </svg></div>
+      <div class="doodle-wrap swirl" style="left: 68%; top: 23%;"><svg class="doodle-svg" viewBox="0 0 120 90" fill="none" aria-hidden="true">
+        <path d="M84 6c26 8 6 42-20 32C40 28 16 46 26 68c8 18 44 14 58-4" stroke-width="4" stroke-linecap="round"/>
+      </svg></div>
+      <div class="doodle-wrap squiggle" style="left: 50%; top: 77%;"><svg class="doodle-svg" viewBox="0 0 220 18" fill="none" aria-hidden="true">
+        <path d="M2 12c18-10 30-10 44 0s26 10 44 0 30-10 44 0 26 10 42 2" stroke-width="5" stroke-linecap="round"/>
+      </svg></div>
+      <div class="doodle-wrap leaf" style="left: 8%; top: 49%;"><svg class="doodle-svg" viewBox="0 0 60 70" fill="none" aria-hidden="true">
+        <path d="M30 6c-6 14-6 30 0 44s14 20 0 44" stroke-width="4" stroke-linecap="round"/>
+        <path d="M18 30c-5-5-10-5-14 0s-5 10 0 14M42 30c5-5 10-5 14 0s5 10 0 14" stroke-width="3.5" stroke-linecap="round"/>
+      </svg></div>
+      <div class="doodle-wrap sparkle" style="left: 93%; top: 49%;"><svg class="doodle-svg" viewBox="0 0 38 38" fill="none" aria-hidden="true">
+        <path d="M19 2v16M3 19h16M10 10l8 8M28 10l-8 8" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="12" cy="12" r="2.5"/><circle cx="26" cy="26" r="2.5"/>
+      </svg></div>
+
       <p class="kicker">Autonomous / Field Robot</p>
 
       <div class="wordmark-wrap">
-        <!-- hand-drawn accents -->
-        <svg class="doodle swirl" viewBox="0 0 120 90" fill="none" aria-hidden="true">
-          <path d="M84 6c26 8 6 42-20 32C40 28 16 46 26 68c8 18 44 14 58-4" stroke-width="4" stroke-linecap="round"/>
-        </svg>
-        <svg class="doodle aster" viewBox="0 0 60 60" fill="none" aria-hidden="true">
-          <path d="M30 2v56M2 30h56M10 10l40 40M50 10L10 50" stroke-width="4" stroke-linecap="round"/>
-        </svg>
         <h1 class="wordmark">Agri-Pal</h1>
-        <svg class="doodle squiggle" viewBox="0 0 220 18" fill="none" aria-hidden="true">
-          <path d="M2 12c18-10 30-10 44 0s26 10 44 0 30-10 44 0 26 10 42 2" stroke-width="5" stroke-linecap="round"/>
-        </svg>
       </div>
 
       <p class="tagline">Autonomous line-following, obstacle-avoiding, crop-harvesting robot.</p>
@@ -119,33 +128,30 @@
           <svg class="doodle aster" viewBox="0 0 60 60" fill="none">
             <path d="M30 2v56M2 30h56M10 10l40 40M50 10L10 50" stroke-width="4" stroke-linecap="round"/>
           </svg>
-          <svg viewBox="0 0 300 340" fill="none" stroke="#0d1014" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="150" cy="40" r="22" />
-            <path d="M150 62v34" />
-            <rect x="104" y="96" width="92" height="44" rx="10" />
-            <path d="M104 118h-14v92h26M196 118h14v92h-26" />
-            <circle cx="76" cy="234" r="26" />
-            <circle cx="224" cy="234" r="26" />
-            <path d="M150 140v96" />
-            <rect x="96" y="236" width="54" height="28" rx="8" />
-            <rect x="150" y="236" width="54" height="28" rx="8" />
-            <path d="M150 264c-10 34-34 48-62 56M150 264c10 34 34 48 62 56" opacity=".45" />
-          </svg>
+          <div class="robot-panel" id="robot-panel">
+            <canvas class="dot-robot" id="dot-robot" role="img" aria-label="Dot-built Agri-Pal robot"></canvas>
+          </div>
         </div>
 
         <div class="cap-content reveal">
           <div class="cap-labels" id="cap-labels">
-            <div class="cap-label lit" id="cap-navigate">
+            <div class="cap-label lit" id="cap-navigate" data-phase="0">
               <span class="num">01</span>
               <h3>Navigate</h3>
+              <p class="cap-sub">Line follower</p>
+              <p class="cap-desc">An IR sensor array reads the guide line and a PID loop adjusts motor speed in real time, keeping the bot centered on the row.</p>
             </div>
-            <div class="cap-label" id="cap-detect">
+            <div class="cap-label" id="cap-detect" data-phase="1">
               <span class="num">02</span>
               <h3>Detect</h3>
+              <p class="cap-sub">Obstacle detection</p>
+              <p class="cap-desc">Ultrasonic sensing scans ahead. When something enters the safety distance, the bot halts or reroutes around it.</p>
             </div>
-            <div class="cap-label" id="cap-harvest">
+            <div class="cap-label" id="cap-harvest" data-phase="2">
               <span class="num">03</span>
               <h3>Harvest</h3>
+              <p class="cap-sub">Plucking</p>
+              <p class="cap-desc">A servo-driven arm with a gripper picks the ripe produce and places it in the collection tray.</p>
             </div>
           </div>
           <p class="cap-tag">You focus on the field. It handles the row.</p>
@@ -206,7 +212,7 @@
             Explore full specs
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
           </a>
-          <a class="btn btn-dark" href="live-status.html">Open live dashboard</a>
+          <a class="btn btn-dark" href="#live-status" data-modal="status">Open live dashboard</a>
         </div>
       </div>
     </section>
@@ -219,11 +225,9 @@
         <h4>Menu</h4>
         <ul class="footer-links">
           <li><a href="#top">Home</a></li>
-          <li><a href="#" data-modal="components">Components</a></li>
+          <li><a href="#components" data-modal="components">Components</a></li>
           <li><a href="#specs" data-modal="specs">Specs</a></li>
-          <li><a href="live-status.html">Live Status</a></li>
-          <li><a href="how-it-works.html">How It Works</a></li>
-          <li><a href="team.html">Team</a></li>
+          <li><a href="#live-status" data-modal="status">Live Status</a></li>
         </ul>
       </div>
       <div class="footer-col">
@@ -236,7 +240,7 @@
       </div>
       <div class="footer-col">
         <h4>Contact</h4>
-        <p class="footer-contact">Questions or collaboration?<br /><a href="mailto:hello@agripal.xyz">hello@agripal.xyz</a></p>
+        <p class="footer-contact">Questions or collaboration?<br /><a href="#contact" data-contact>hello@agripal.xyz</a></p>
         <div class="footer-pills">
           <a class="pill" href="#" aria-label="GitHub repository">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.8c-2.8.6-3.4-1.3-3.4-1.3-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.5 2.4 1.1 3 .9.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.7 1a9.4 9.4 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.4 4.7-4.6 5 .4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/></svg>
@@ -261,7 +265,12 @@
   <div id="modal-root"></div>
 
   <script src="ui.js"></script>
+  <script src="botshape.js"></script>
+  <script src="botrig.js"></script>
+  <script src="dotrobot.js"></script>
   <script src="script.js"></script>
+  <script src="live-dashboard.js"></script>
+  <script src="specs.js"></script>
   <script src="particles.js"></script>
 </body>
 </html>

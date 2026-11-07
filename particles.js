@@ -43,18 +43,7 @@
       big: "The build sheet",
       desc: "The numbers behind the bot: laser-cut acrylic chassis, differential drive, weighted IR line sensing, ultrasonic obstacle scan and the Spring Boot telemetry pipeline.",
       figCap: "FIG. 02 / TECHNICAL LAYOUT",
-      figNote: "Every number that decides how the bot moves, steers and senses its way down a row.",
-      rowsTitle: "Seven headline numbers",
-      rowsSub: "The spec sheet distilled — chassis, motion, control, perception, power.",
-      rows: [
-        { t: "Chassis", d: "3mm laser-cut acrylic, differential drive, 4 driven wheels.", mono: "CH", how: "The acrylic chassis keeps weight low while four driven wheels with differential drive hold a straight line over uneven rows." },
-        { t: "Drive motors", d: "4 × DC gear motors, bi-directional motor driver.", mono: "DM", how: "Four DC gear motors bring both power and torque; the driver handles full bidirectional control with PWM." },
-        { t: "Controller", d: "On-board microcontroller, 100Hz control loop.", mono: "CT", how: "A single microcontroller runs the 100Hz loop that ties sensors, steering and the arm together." },
-        { t: "Sensors", d: "IR line array, ultrasonic rangefinder, optional camera vision.", mono: "SN", how: "The IR array tracks the guide line, the ultrasonic scans ahead, and the optional camera helps identify ripe fruit." },
-        { t: "Power source", d: "Rechargeable Li-ion pack + BMS, 5V/3.3V rails.", mono: "PS", how: "The Li-ion pack with balancing BMS feeds a regulated 5V/3.3V logic rail with under-voltage and over-current protection." },
-        { t: "Speed control", d: "Differential PID speed control, weighted line error.", mono: "SC", how: "PID corrects per-side motor speed hundreds of times a second so the bot stays centred on the guide line." },
-        { t: "Payload", d: "Integrated tray with quick-release.", mono: "PL", how: "The quick-release tray snaps out at the end of a pass to unload the plucked produce." }
-      ]
+      figNote: "Every number that decides how the bot moves, steers and senses its way down a row."
     },
     status: {
       num: "03",
@@ -64,19 +53,31 @@
       big: "Live telemetry",
       desc: "Battery, mode, obstacle count and harvests stream from the on-board controller over the local Spring Boot API — with a graceful offline state when it isn't running.",
       figCap: "FIG. 03 / TELEMETRY VIEW",
-      figNote: "Status packets flow from the controller to the Spring Boot API and out to this dashboard.",
-      rowsTitle: "Four live fields",
-      rowsSub: "The controller publishes a small status packet; these four values are what the dashboard renders.",
-      rows: [
-        { t: "Battery", d: "Remaining charge, reported by the BMS.", mono: "BA", how: "Telemetry polls the charge level and raises an alert when it drops below the swap threshold." },
-        { t: "Mode", d: "Idle, line-following, obstacle handling or harvesting.", mono: "MD", how: "The controller publishes its current state, so the dashboard always shows which task the bot is in." },
-        { t: "Last obstacle", d: "Most recent object detected, and when.", mono: "LO", how: "Every close pass by the rangefinder records distance and time, building a log of row traffic." },
-        { t: "Items plucked", d: "Harvest count since the run started.", mono: "HP", how: "Each successful pluck increments the counter shown on the live dashboard." }
-      ]
+      figNote: "Status packets flow from the controller to the Spring Boot API and out to this dashboard."
     }
   };
 
+  /* Components tab — photo mosaic layout. Photo content lives in one array
+     at the top of script.js (window.AGRI_PAL_COMPONENTS). */
+  var COMPONENT_PHOTO_EXTS = ["png", "jpg", "jpeg", "webp"];
+
+  var COMPONENTS_POS = {
+    "Arduino":      "grid-column: 1; grid-row: 1;",
+    "IR Sensor":    "grid-column: 2; grid-row: 1;",
+    "intro":        "grid-column: 3 / span 2; grid-row: 1;",
+    "Assembled Bot":"grid-column: 1 / span 2; grid-row: 2;",
+    "Obstacle Sensor": "grid-column: 3; grid-row: 2;",
+    "Motor":        "grid-column: 4; grid-row: 2;",
+    "Motor Driver": "grid-column: 1; grid-row: 3;",
+    "Li-po Battery":"grid-column: 2; grid-row: 3;",
+    "Servo Gripper":"grid-column: 3 / span 2; grid-row: 3;"
+  };
+
+  var COMPONENTS_ORDER = ["Arduino", "IR Sensor", "intro", "Assembled Bot", "Obstacle Sensor", "Motor", "Motor Driver", "Li-po Battery", "Servo Gripper"];
+
+
   var currentKey = null;
+  var liveDash = null;
   var page = null;
   var canvas = null;
   var ctx = null;
@@ -354,6 +355,7 @@
     var amp = sp * sp * 72 + sp * 16;
     var fade = 1 - sp * 0.97;
     var uw = now * 0.0012;
+    var swell = 0.5 + 0.5 * Math.sin(now * 0.0014);
     ctx.clearRect(0, 0, stageW, stageH);
     ctx.fillStyle = GREEN;
 
@@ -372,6 +374,23 @@
           var arf = 1 - ad / R;
           atx += (adx / ad) * PUSH * 0.7 * arf * arf;
           aty += (ady / ad) * PUSH * 0.7 * arf * arf;
+        }
+      }
+      /* Two-layered idle wave: horizontal travelling Y + slower cross X */
+      var idleAX = Math.sin(ap.ay * 0.02 + now * 0.001) * 4 * 0.5;
+      var idleAY = Math.sin(ap.ax * 0.015 + now * 0.0015) * 8;
+      atx += idleAX * swell;
+      aty += idleAY * swell;
+      /* Cursor extra amplitude on top of repulsion */
+      if (over) {
+        var cdx = ap.x - mxs;
+        var cdy = ap.y - mys;
+        var cd2 = cdx * cdx + cdy * cdy;
+        if (cd2 < R * R) {
+          var cd = Math.sqrt(cd2) || 1;
+          var cf = 1 - cd / R;
+          atx += (cdx / cd) * cf * cf * 4;
+          aty += (cdy / cd) * cf * cf * 4;
         }
       }
       var asw = Math.sin(ap.x * 0.011 + sp * 14 + uw);
@@ -402,14 +421,31 @@
       cx /= s;
       cy /= s;
     }
-    var lookX = Math.cos(now * 0.0005) * 2.6;
-    var lookY = Math.sin(now * 0.00035) * 1.4;
+    var lookX = Math.cos(now * 0.0005) * 9;
+    var lookY = Math.sin(now * 0.00035) * 9;
     for (var i = 0; i < n; i++) {
       var p = parts[i];
       if (now < p.start) continue;
       var u = now * 0.0016;
       var tx = p.ax + Math.sin(u + p.ph) * 0.7;
       var ty = p.ay + Math.cos(u * 1.3 + p.ph) * 0.5;
+      /* Two-layered idle wave: horizontal travelling Y + slower cross X */
+      var idlePX = Math.sin(p.ay * 0.02 + now * 0.001) * 4 * 0.5;
+      var idlePY = Math.sin(p.ax * 0.015 + now * 0.0015) * 8;
+      tx += idlePX * swell;
+      ty += idlePY * swell;
+      /* Cursor extra amplitude on top of repulsion */
+      if (over) {
+        var cdx = p.x - mxs;
+        var cdy = p.y - mys;
+        var cd2 = cdx * cdx + cdy * cdy;
+        if (cd2 < R * R) {
+          var cd = Math.sqrt(cd2) || 1;
+          var cf = 1 - cd / R;
+          tx += (cdx / cd) * cf * cf * 4;
+          ty += (cdy / cd) * cf * cf * 4;
+        }
+      }
       if (eyeOn && p.eye) {
         var edx;
         var edy;
@@ -418,7 +454,7 @@
           edy = mys - cy;
           var el = Math.hypot(edx, edy) || 1;
           var em = Math.min(1, el / 260);
-          var mag = 1.4 + 2.6 * em;
+          var mag = 3 + 7 * em;
           edx = (edx / el) * mag;
           edy = (edy / el) * mag;
         } else {
@@ -447,9 +483,15 @@
       var k = p.rate;
       p.x += (tx - p.x) * k;
       p.y += (ty - p.y) * k;
-      ctx.globalAlpha = 0.85 * fade;
+      var isEye = p.eye;
+      var eyeRad = RADIUS * (isEye ? 1.7 : 1);
+      var eyeAlpha = (isEye ? 1.0 : 0.85) * fade;
+      if (isEye) {
+        eyeAlpha *= (0.85 + 0.15 * Math.sin(now * 0.003 + p.ph));
+      }
+      ctx.globalAlpha = eyeAlpha;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, RADIUS, 0, 6.2832);
+      ctx.arc(p.x, p.y, eyeRad, 0, 6.2832);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
@@ -461,43 +503,60 @@
     rafId = requestAnimationFrame(loop);
   }
 
-  function rowMarkup(key, idx) {
-    var info = INFO[key];
-    var r = info.rows[idx];
-    var inner = "";
-    if (key === "components") {
-      var m = window.AgriPalUI && AgriPalUI.MODALS && AgriPalUI.MODALS.components;
-      var card = m && m.cards ? m.cards[idx % m.cards.length] : null;
-      if (card) {
-        if (card.spec && card.spec.length) {
-          inner += "<ul>";
-          card.spec.forEach(function (s) {
-            inner += "<li>" + s + "</li>";
-          });
-          inner += "</ul>";
-        }
-        if (card.how) inner += "<p>" + card.how + "</p>";
-        else inner += "<p>" + r.d + "</p>";
-      } else {
-        inner += "<p>" + r.d + "</p>";
+  function componentsMarkup() {
+    var data = window.AGRI_PAL_COMPONENTS || [];
+    var byName = {};
+    data.forEach(function (d) { byName[d.name] = d; });
+    var h = '<div class="pt-components-grid components-grid-wide">';
+    COMPONENTS_ORDER.forEach(function (key, idx) {
+      var pos = COMPONENTS_POS[key] || "";
+      if (key === "intro") {
+        h += (
+          '<div class="pt-tile pt-tile-intro" style="' + pos + '">' +
+          '<span class="pt-tile-eyebrow">HARDWARE</span>' +
+          '<h2 class="pt-tile-headline">WHAT\'S INSIDE THE BOT</h2>' +
+          '<p class="pt-tile-intro-desc">Every part of Agri-Pal, chosen to follow the row, dodge obstacles and pluck produce.</p>' +
+          '</div>'
+        );
+        return;
       }
-    } else {
-      inner += "<p>" + r.d + "</p>";
-      if (r.how) inner += "<p>" + r.how + "</p>";
-    }
-    var nn = (idx + 1 < 10 ? "0" : "") + (idx + 1);
-    return (
-      '<div class="pt-item">' +
-      '<button class="pt-rowhead" type="button" aria-expanded="false" aria-controls="ptd-' + nn + '">' +
-      '<span class="pt-num">' + nn + "</span>" +
-      '<span class="pt-title">' + r.t + "</span>" +
-      '<span class="pt-iconsq">' + r.mono + "</span>" +
-      '<span class="pt-brief">' + r.d + "</span>" +
-      '<span class="pt-plus" aria-hidden="true">&plus;</span>' +
-      "</button>" +
-      '<div class="pt-detail" id="ptd-' + nn + '" role="region">' + inner + "</div>" +
-      "</div>"
-    );
+      var d = byName[key];
+      if (!d) return;
+      var url = encodeURI("assets/Components/" + d.file + "." + COMPONENT_PHOTO_EXTS[0]);
+      var chips = (d.chips || []).map(function (s) { return '<li>' + s + '</li>'; }).join('');
+      var cls = "pt-tile pt-tile-photo" + (key === "Assembled Bot" ? " pt-tile--assembled" : "");
+      h += (
+        '<div class="' + cls + '" data-component="' + d.name + '" style="' + pos + '">' +
+        '<img src="' + url + '" alt="' + d.name + ' component photo" loading="eager" decoding="async" ' +
+        'data-component-name="' + d.name + '" data-photo-base="' + d.file + '" data-photo-step="0" ' +
+        'onerror="window.AgriPalPhotoFallback && window.AgriPalPhotoFallback(this);">' +
+        '<div class="pt-tile-gradient"></div>' +
+        '<span class="pt-tile-label">' + d.name + '</span>' +
+        '<div class="pt-tile-hover">' +
+        '<span class="pt-tile-hover-name">' + d.name + '</span>' +
+        '<p class="pt-tile-hover-desc">' + d.description + '</p>' +
+        '<ul class="pt-tile-hover-specs">' + chips + '</ul>' +
+        '</div>' +
+        '</div>'
+      );
+    });
+    h += '</div>';
+    return h;
+  }
+
+  function animateComponentTiles(scope) {
+    var grid = scope && scope.querySelector ? scope.querySelector(".pt-components-grid") : null;
+    if (!grid) return;
+    var tiles = grid.querySelectorAll(".pt-tile");
+    tiles.forEach(function (t, i) { t.style.transitionDelay = Math.min(i, 8) * 55 + "ms"; });
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { grid.classList.add("is-in"); });
+    });
+    if (window.AgriPalTrackComponents) window.AgriPalTrackComponents(scope);
+  }
+
+  function liveDashboardMarkup() {
+    return '<div class="live-dashboard-mount" data-live-dashboard></div>';
   }
 
   function storyMarkup(key) {
@@ -513,14 +572,18 @@
       "<figcaption>" + info.figCap + "</figcaption>" +
       '<p class="pt-fig-note">' + info.figNote + "</p></figure>" +
       "</div></div></section>";
-    h += '<section class="pt-rows"><div class="pt-rows-inner">' +
-      '<h3 class="pt-rows-title">' + info.rowsTitle + "</h3>" +
-      '<p class="pt-rows-sub">' + info.rowsSub + "</p>" +
-      '<div class="pt-rows-list">';
-    for (var i = 0; i < info.rows.length; i++) {
-      h += rowMarkup(key, i);
+
+    /* Specs has its own four-section layout (specs.js). Components and
+       Live Status keep the shared rows shell. */
+    if (key === "specs") {
+      if (window.AgriPalSpecs) h += window.AgriPalSpecs.sectionsMarkup();
+      return h;
     }
-    h += "</div></div></section>";
+
+    h += '<section class="pt-rows">';
+    if (key === "components") h += componentsMarkup();
+    else if (key === "status") h += '<div class="pt-rows-inner">' + liveDashboardMarkup() + '</div>';
+    h += "</section>";
     return h;
   }
 
@@ -533,46 +596,16 @@
     );
   }
 
-  function bindAccordion(scope) {
-    scope.querySelectorAll(".pt-rowhead").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var item = btn.closest(".pt-item");
-        var open = item.classList.toggle("open");
-        btn.setAttribute("aria-expanded", open ? "true" : "false");
-      });
-    });
+  function stopLiveDashboard() {
+    if (liveDash) { liveDash.destroy(); liveDash = null; }
   }
 
-  function bindReveal(scope) {
-    var rows = scope.querySelector(".pt-rows");
-    if (!rows) return;
-    var items = rows.querySelectorAll(".pt-item");
-    var io = "IntersectionObserver" in window
-      ? new IntersectionObserver(function (entries) {
-          entries.forEach(function (en) {
-            if (en.isIntersecting) {
-              en.target.classList.add("is-in");
-              io.unobserve(en.target);
-            }
-          });
-        }, { rootMargin: "0px 0px -8% 0px" })
-      : null;
-    var revealAllInView = function () {
-      var limit = window.innerHeight - Math.round(window.innerHeight * 0.08);
-      items.forEach(function (it) {
-        if (it.classList.contains("is-in")) return;
-        if (it.getBoundingClientRect().top < limit) {
-          it.classList.add("is-in");
-          if (io) io.unobserve(it);
-        }
-      });
-    };
-    items.forEach(function (it, i) {
-      it.style.transitionDelay = Math.min(i, 8) * 45 + "ms";
-      if (io) io.observe(it);
-    });
-    if (scope.addEventListener) scope.addEventListener("scroll", revealAllInView, { passive: true });
-    revealAllInView();
+  function mountLiveDashboard(scope) {
+    if (!scope || !window.renderLiveDashboard) return;
+    var mount = scope.querySelector("[data-live-dashboard]");
+    if (!mount) return;
+    liveDash = window.renderLiveDashboard(mount);
+    if (liveDash) liveDash.start();
   }
 
   function staticBotSvg() {
@@ -643,12 +676,14 @@
     page.style.setProperty("--c0", "circle(0px at " + cx + "px " + cy + "px)");
     page.style.setProperty("--c1", "circle(" + radius + "px at " + cx + "px " + cy + "px)");
     document.body.appendChild(page);
+    page.scrollTop = 0;
     void page.offsetWidth;
     if (!REDUCED) page.classList.add("is-open");
     else page.classList.add("is-open-calm");
 
-    bindAccordion(page);
-    bindReveal(page);
+    if (key === "components") animateComponentTiles(page);
+    mountLiveDashboard(page);
+    if (key === "specs" && window.AgriPalSpecs) window.AgriPalSpecs.mount(page);
 
     var closeBtn = page.querySelector(".pt-close");
     if (closeBtn) {
@@ -713,13 +748,17 @@
     var info = INFO[key];
     var story = page.querySelector(".pt-story");
     var part = page.querySelector(".pt-part");
+    stopLiveDashboard();
+    if (window.AgriPalSpecs) window.AgriPalSpecs.unmount();
     if (story) story.outerHTML = '<div class="pt-story">' + storyMarkup(key) + "</div>";
     if (part) part.textContent = info.num + " / " + info.label;
     var foot = page.querySelector(".pt-foot");
     if (foot) foot.outerHTML = footMarkup(key);
     currentKey = key;
-    bindAccordion(page);
-    bindReveal(page);
+    page.scrollTop = 0;
+    if (key === "components") animateComponentTiles(page);
+    mountLiveDashboard(page);
+    if (key === "specs" && window.AgriPalSpecs) window.AgriPalSpecs.mount(page);
     var cv = page.querySelector(".pt-canvas");
     if (cv) cv.setAttribute("aria-label", "Interactive particle text: " + info.label + " — click to remould into the robot silhouette");
     var b = page.querySelector(".pt-bread");
@@ -744,7 +783,7 @@
 
   function open(key, ev) {
     if (running) {
-      if (key === currentKey) return;
+      if (key === currentKey) { if (page) page.scrollTop = 0; return; }
       applyKey(key);
       return;
     }
@@ -758,25 +797,42 @@
     mx = -10000;
     my = -10000;
     document.body.style.overflow = "hidden";
+    if (window.AgriPalNav) {
+      window.AgriPalNav.setOverlay(true);
+      window.AgriPalNav.setDark("dark");
+      window.AgriPalNav.setActive(key);
+      window.AgriPalNav.showIndicator(true);
+      window.AgriPalNav.updateIndicator(key);
+    }
     buildPage(key, cx, cy);
   }
 
   function close() {
-    if (!page) return;
+    if (!page || !page.classList.contains("is-open")) return;
+    stopLiveDashboard();
+    if (window.AgriPalSpecs) window.AgriPalSpecs.unmount();
     running = false;
     if (rafId) cancelAnimationFrame(rafId);
     var live = page;
     live.classList.remove("is-open");
     live.classList.add("is-closing");
     if (REDUCED) live.classList.remove("is-open-calm");
+    if (window.AgriPalNav) {
+      window.AgriPalNav.setOverlay(false);
+      window.AgriPalNav.setActive(null);
+      window.AgriPalNav.setDark("light");
+      window.AgriPalNav.showIndicator(false);
+    }
     setTimeout(function () {
       if (live && live.parentNode) live.parentNode.removeChild(live);
-      document.body.style.overflow = "";
-      page = null;
-      canvas = null;
-      ctx = null;
-      rect = null;
-      running = false;
+      if (!document.querySelector(".ct-view.is-open") && !document.querySelector(".pt-page.is-open")) document.body.style.overflow = "";
+      if (page === live) {
+        page = null;
+        canvas = null;
+        ctx = null;
+        rect = null;
+        running = false;
+      }
     }, REDUCED ? 340 : 660);
   }
 
@@ -787,6 +843,7 @@
   document.addEventListener(
     "click",
     function (e) {
+      if (e.__agriNavHandled) return;
       var t = e.target && e.target.closest ? e.target.closest("[data-modal]") : null;
       if (!t) return;
       var key = t.getAttribute("data-modal");

@@ -13,16 +13,6 @@
 
   /* Modal content — single source of truth for all pages. */
   var MODALS = {
-    home: {
-      title: "Agri-Pal",
-      body: [
-        "An autonomous field robot for the row crop — it follows a guide line between crops, senses obstacles ahead, and reaches out to pluck ripe produce into its payload.",
-        "Each part is drawn, wired and coded for a college subject project, with a Java Spring Boot backend serving live telemetry.",
-        "Open the components list in the menu to walk through each part."
-      ],
-      cards: null,
-      jump: { text: "Jump to section", href: "#top" }
-    },
     components: {
       title: "Under the Hood",
       body: [],
@@ -146,7 +136,7 @@
         "If the backend isn't running, the dashboard shows a graceful offline state instead of failing silently."
       ],
       cards: null,
-      liveLink: { text: "Open full dashboard", href: "live-status.html" },
+      liveLink: { text: "Open full dashboard", href: "#live-status", modal: "status" },
       jump: { text: "Jump to live section", href: "#live" }
     },
     contact: {
@@ -253,7 +243,9 @@
       footer += '<a class="modal-jump" href="' + data.jump.href + '">' + data.jump.text + " " + svgUpRight() + "</a>";
     }
     if (data.liveLink) {
-      footer += '<a class="btn btn-accent btn-arrow" href="' + data.liveLink.href + '">' + data.liveLink.text + " " + svgArrow() + "</a>";
+      footer += '<a class="btn btn-accent btn-arrow" href="' + data.liveLink.href + '"' +
+        (data.liveLink.modal ? ' data-modal="' + data.liveLink.modal + '"' : "") + ">" +
+        data.liveLink.text + " " + svgArrow() + "</a>";
     }
     if (!footer) footer = '<button class="btn btn-ghost" data-close-modal>Close</button>';
 
