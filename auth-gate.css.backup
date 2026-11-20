@@ -1,0 +1,63 @@
+/* ============================================================================
+   Auth gate — navbar auth pill + Live Status lock (scoped)
+   ========================================================================= */
+.nav-auth { display: inline-flex; align-items: center; margin-right: 10px; }
+.site-nav .nav-links a, .site-nav .nav-cta, .site-nav .nav-login-pill, .site-nav .nav-auth .nav-login-pill {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+}
+.nav-auth .nav-login-pill {
+  background: transparent; border: 1px solid rgba(0,0,0,0.12); color: #0d1014;
+  padding: 8px 16px; border-radius: 999px; font-weight: 600; font-size: .9rem;
+  cursor: pointer; transition: background .2s ease, border-color .2s ease;
+}
+.site-nav[data-theme="dark"] .nav-auth .nav-login-pill {
+  border-color: rgba(255,255,255,0.25); color: #ecf1f6;
+}
+.site-nav[data-theme="dark"] .nav-auth .nav-login-pill:hover { background: rgba(255,255,255,0.08); }
+.nav-auth .nav-login-pill:hover { background: rgba(13,16,20,0.06); }
+
+.nav-auth .nav-avatar {
+  width: 34px; height: 34px; border-radius: 50%; background: #14a35c; color: #fff;
+  display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem;
+  cursor: pointer; border: 0;
+}
+.nav-auth-menu {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  background: #fff; border: 1px solid #e2e4de; border-radius: 14px;
+  box-shadow: 0 18px 40px -18px rgba(13,16,20,.28);
+  padding: 12px; min-width: 220px; z-index: 100;
+}
+.nav-auth-menu .nam-name { font-weight: 700; color: #0d1014; }
+.nav-auth-menu .nam-email { font-size: .85rem; color: #5a6170; }
+.nav-auth-menu .nam-bot { font-size: .85rem; color: #0b7a43; margin: 8px 0; }
+.nav-auth-menu button, .nav-auth-menu a {
+  display: block; width: 100%; text-align: left; padding: 8px 10px; border-radius: 8px;
+  background: none; border: 0; cursor: pointer; color: #0d1014; font-size: .9rem;
+}
+.nav-auth-menu button:hover, .nav-auth-menu a:hover { background: rgba(13,16,20,.06); }
+
+/* Live Status lock card */
+.live-lock {
+  max-width: 420px; margin: 40px auto; background: #fff; border-radius: 24px;
+  box-shadow: 0 18px 40px -18px rgba(13,16,20,.28); padding: 28px; text-align: center;
+}
+.live-lock .lock-icon {
+  width: 56px; height: 56px; border-radius: 50%; background: #e7f5ec; color: #14a35c;
+  display: flex; align-items: center; justify-content: center; margin: 0 auto 14px;
+}
+.live-lock h3 { font-size: 22px; font-weight: 700; color: #111418; margin: 0 0 8px; }
+.live-lock p { font-size: 16px; color: #3a434c; margin: 0 0 18px; }
+.live-lock .lock-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 12px; }
+.live-lock .lock-btns button, .live-lock .lock-btns a {
+  padding: 10px 20px; border-radius: 999px; font-weight: 600; cursor: pointer; border: 0;
+}
+.live-lock .lock-primary { background: #111418; color: #fff; }
+.live-lock .lock-secondary { background: #fff; color: #111418; border: 1px solid #e3e5e0; }
+.live-lock .lock-demo { font-size: 13px; color: #5a6570; }
+
+.live-status-locked .glass-card.dashboard { filter: blur(7px); pointer-events: none; }
+.live-status-locked .glass-card.dashboard { opacity: .7; }
+
+@media (max-width: 900px) {
+  .nav-auth { margin-right: 4px; }
+}

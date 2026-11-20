@@ -28,54 +28,125 @@
 
   function dashboardMarkup() {
     return (
-      '<div class="glass-card dashboard">' +
-        '<div class="pt-live-head">' +
-          '<span class="pt-live-label">LIVE DASHBOARD</span>' +
-          '<span class="dash-demo-badge" data-dash-demo hidden>DEMO</span>' +
-          '<p class="pt-live-lede">Live readings from your bot, updated every few seconds.</p>' +
-        '</div>' +
-        '<div class="dash-top">' +
-          '<span class="status-pill"><span class="pill-light offline" data-dash-pill><span class="status-dot"></span><span data-dash-conn>Offline</span></span></span>' +
-          '<button class="btn btn-ghost" type="button" data-dash-sim>Use simulated data</button>' +
-        '</div>' +
-        '<div class="dash-grid">' +
-          '<div class="dash-tile">' +
-            '<div class="dash-label-row"><span class="dash-label">Battery</span><span class="tile-icon">' + ICONS.battery + '</span></div>' +
-            '<span class="dash-value is-waiting" data-dash-battery>&mdash;</span>' +
-            '<div class="battery-bar"><div class="battery-fill" data-dash-battery-fill style="width:0%"></div></div>' +
-            '<span class="dash-meta" data-dash-battery-note></span>' +
-          '</div>' +
-          '<div class="dash-tile">' +
-            '<div class="dash-label-row"><span class="dash-label">Mode</span><span class="tile-icon">' + ICONS.mode + '</span></div>' +
-            '<span class="dash-value dash-value--mode is-waiting" data-dash-mode>&mdash;</span>' +
-            '<span class="dash-meta" data-dash-mode-note></span>' +
-          '</div>' +
-          '<div class="dash-tile">' +
-            '<div class="dash-label-row"><span class="dash-label">Last obstacle</span><span class="tile-icon">' + ICONS.obstacle + '</span></div>' +
-            '<span class="dash-value is-waiting" data-dash-obstacle>&mdash;</span>' +
-            '<span class="dash-meta" data-dash-obstacle-note></span>' +
-          '</div>' +
-          '<div class="dash-tile">' +
-            '<div class="dash-label-row"><span class="dash-label">Items plucked</span><span class="tile-icon">' + ICONS.plucked + '</span></div>' +
-            '<span class="dash-value is-waiting" data-dash-plucked>&mdash;</span>' +
-            '<span class="dash-meta">this session</span>' +
-          '</div>' +
-          '<div class="dash-tile">' +
-            '<div class="dash-label-row"><span class="dash-label">Row position</span><span class="tile-icon">' + ICONS.position + '</span></div>' +
-            '<span class="dash-value is-waiting" data-dash-position>&mdash;</span>' +
-            '<span class="dash-meta" data-dash-position-note></span>' +
-          '</div>' +
-          '<div class="dash-empty" data-dash-empty hidden>' +
-            '<span class="dash-empty-dot" aria-hidden="true"></span>' +
-            '<p class="dash-empty-title">Waiting for your bot to connect</p>' +
-            '<p class="dash-empty-text">Start the Java backend, or switch to demo data.</p>' +
-            '<button class="btn btn-ghost" type="button" data-dash-show-demo>Show demo data</button>' +
+      '<div class="glass-card dashboard bento">' +
+        '<div class="bento-header">' +
+          '<div><span class="bento-kicker">LIVE TELEMETRY</span><h3 class="bento-title">Bot Status &amp; Field Feed</h3></div>' +
+          '<div class="bento-header-right">' +
+            '<span class="mode-pill" data-dash-mode-pill>&#9679; Driving &middot; Following the crop row</span>' +
+            '<span class="status-pill"><span class="pill-light offline" data-dash-pill id="live-conn-pill"><span class="status-dot"></span><span data-dash-conn>Offline</span></span></span>' +
+            '<button class="btn btn-ghost btn-sm" type="button" data-dash-refresh>Refresh</button>' +
           '</div>' +
         '</div>' +
-        '<p class="dash-source">Data source: Java Spring Boot API (/api/status)</p>' +
+        '<div class="bento-row1">' +
+          '<div class="bento-card bento-battery">' +
+            '<div class="bento-card-head">Battery &amp; Power <span class="batt-pill" id="batt-pill" data-dash-batt-pill>Healthy</span></div>' +
+            '<div class="ring-wrap"><svg class="ring" viewBox="0 0 120 120"><circle class="ring-bg" cx="60" cy="60" r="52"/><circle class="ring-fill" data-dash-ring cx="60" cy="60" r="52"/></svg><span class="ring-val" id="stat-battery" data-dash-battery>78%</span></div>' +
+            '<div class="bento-meta" id="stat-battery-note" data-dash-battery-note>~3.1 hours left &middot; Healthy</div>' +
+          '</div>' +
+          '<div class="bento-card bento-rowtrack">' +
+            '<div class="bento-card-head">Navigation &amp; Row</div>' +
+            '<div class="rowtrack-top"><span class="rowtrack-val" id="stat-row" data-dash-position>Row 3 of 12</span><span class="rowtrack-pct">25% of field covered</span></div>' +
+            '<div class="rowtrack-bars" id="rowtrack-bars"></div>' +
+            '<div class="bento-meta" data-dash-position-note>of 12 rows</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="bento-row2">' +
+          '<div class="bento-card">' +
+            '<div class="bento-card-head">Harvest &amp; Proximity</div>' +
+            '<div class="harvest-split">' +
+              '<div class="harvest-col">' +
+                '<div class="harvest-label">ITEMS PLUCKED</div>' +
+                '<div class="bento-big" id="stat-plucked" data-dash-plucked>14</div>' +
+                '<div class="bento-sub">Harvested this session</div>' +
+              '</div>' +
+              '<div class="harvest-divider"></div>' +
+              '<div class="harvest-col">' +
+                '<div class="harvest-label">LAST OBSTACLE</div>' +
+                '<div class="bento-big" id="stat-obstacle" data-dash-obstacle>24 cm</div>' +
+                '<div class="prox-bar"><div class="prox-fill" data-dash-prox></div></div>' +
+                '<div class="bento-meta" data-dash-obstacle-note>Seen at 1:40 am</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="bento-card bento-subsys">' +
+            '<div class="bento-card-head">Subsystems &amp; Bot Health <span class="subsys-pill" id="subsys-pill" data-dash-subsys-pill>Nominal</span></div>' +
+            '<div class="subsys-list">' +
+              '<div class="subsys-row"><span class="subsys-key">Bot Unit</span><span class="subsys-val" id="subsys-bot" data-dash-subsys-bot>AGRI-DEMO-0001</span></div>' +
+              '<div class="subsys-row"><span class="subsys-key">Drive &amp; Steering</span><span class="subsys-val" id="subsys-drive" data-dash-subsys-drive>Active · Row 3</span></div>' +
+              '<div class="subsys-row"><span class="subsys-key">Harvester Arm</span><span class="subsys-val" id="subsys-arm" data-dash-subsys-arm>Ready · 14 plucked</span></div>' +
+              '<div class="subsys-row"><span class="subsys-key">Proximity Array</span><span class="subsys-val" id="subsys-prox" data-dash-subsys-prox>Clear (24 cm)</span></div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="dash-empty" data-dash-empty hidden>' +
+          '<p class="dash-empty-title">Waiting for your bot to connect</p>' +
+          '<p class="dash-empty-text">Start the Java backend to see live data.</p>' +
+        '</div>' +
       '</div>'
     );
   }
+
+  /* ---- outer cream contour canvas animator ---- */
+  function mountCreamContour() {
+    try {
+      var mount = document.querySelector(".live-dash");
+      if (!mount) return;
+      var outer = mount.parentElement;
+      while (outer && !/pt-rows/.test(outer.className || "")) outer = outer.parentElement;
+      if (!outer) outer = mount.parentElement;
+      if (!outer || outer.__creamContour) return;
+      outer.__creamContour = true;
+      outer.style.position = "relative";
+      outer.style.overflow = "hidden";
+      var canvas = document.createElement("canvas");
+      canvas.className = "telemetry-contour-canvas";
+      canvas.style.cssText = "position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;";
+      outer.insertBefore(canvas, outer.firstChild);
+      var ctx = canvas.getContext("2d");
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      var W = 0, H = 0, raf = 0, visible = true, t = 0, last = 0;
+      function size() {
+        var r = outer.getBoundingClientRect();
+        W = Math.max(1, Math.round(Math.max(r.width, window.innerWidth)));
+        H = Math.max(1, Math.round(r.height));
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+      }
+      function draw(now) {
+        if (!visible) { raf = requestAnimationFrame(draw); return; }
+        if (now - last < 1000 / 30) { raf = requestAnimationFrame(draw); return; }
+        last = now; t += 0.008;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, W, H);
+        var curves = 11;
+        for (var i = 0; i < curves; i++) {
+          var baseY = (H / (curves + 1)) * (i + 1);
+          var amp = 40 + i * 6;
+          var freq = 0.0025 + i * 0.0006;
+          var phase = t * (0.35 + i * 0.04) + i * 1.3;
+          var accent = (i === 2 || i === 5 || i === 8);
+          ctx.strokeStyle = accent ? "rgba(22,163,74,0.16)" : "rgba(18,30,22,0.15)";
+          ctx.lineWidth = 1.3;
+          ctx.beginPath();
+          for (var x = 0; x <= W; x += 4) {
+            var y = baseY + Math.sin(x * freq + phase) * amp + Math.cos(x * freq * 1.7 - phase * 0.6) * (amp * 0.4);
+            if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+        raf = requestAnimationFrame(draw);
+      }
+      size();
+      var ro = new ResizeObserver(function () { size(); });
+      ro.observe(outer);
+      var io = new IntersectionObserver(function (es) { visible = es[0].isIntersecting; }, { threshold: 0 });
+      io.observe(outer);
+      raf = requestAnimationFrame(draw);
+    } catch (e) {}
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountCreamContour);
+  else setTimeout(mountCreamContour, 0);
 
   window.renderLiveDashboard = function (container) {
     if (!container) return null;
@@ -97,10 +168,7 @@
     var pluckedEl = q("[data-dash-plucked]");
     var positionEl = q("[data-dash-position]");
     var positionNoteEl = q("[data-dash-position-note]");
-    var simBtn = q("[data-dash-sim]");
-    var demoBadge = q("[data-dash-demo]");
     var emptyState = q("[data-dash-empty]");
-    var showDemoBtn = q("[data-dash-show-demo]");
     var dashGrid = q(".dash-grid");
 
     var isOnline = false;
@@ -108,9 +176,7 @@
     var isEmpty = false;
 
     var visible = false;
-    var simulating = false;
     var liveTimer = null;
-    var simTimer = null;
 
     function setWaitingState() {
       [batteryEl, modeEl, obstacleEl, pluckedEl, positionEl].forEach(function (el) {
@@ -147,6 +213,11 @@
         else if (battery < 50) note += " \u00b7 Low";
         batteryNoteEl.textContent = note;
       }
+      var battPill = q("[data-dash-batt-pill]");
+      if (battPill) {
+        if (battery <= 30) { battPill.textContent = "Low"; battPill.className = "batt-pill low"; }
+        else { battPill.textContent = "Healthy"; battPill.className = "batt-pill healthy"; }
+      }
 
       if (modeEl) {
         var modeText = MODE_VALUES[data.mode] || "Waiting";
@@ -181,15 +252,39 @@
         if (data.positionOnRow != null) positionNoteEl.textContent = "of " + ROW_TOTAL + " rows";
         else positionNoteEl.textContent = "";
       }
+      // row track bars
+      var bars = q("#rowtrack-bars");
+      if (bars) {
+        var cur = data.positionOnRow != null ? data.positionOnRow : 0;
+        var html = "";
+        for (var i = 1; i <= ROW_TOTAL; i++) {
+          var cls = i < cur ? "done" : (i === cur ? "active" : "");
+          html += "<div class=\"rowbar-col\"><span class=\"rowbar " + cls + "\"></span><span class=\"rowbar-num\">" + i + "</span></div>";
+        }
+        bars.innerHTML = html;
+        bars.classList.add("rowtrack-bars-wrap");
+      }
+      // proximity bar color
+      var prox = q("[data-dash-prox]");
+      if (prox && data.lastObstacle && data.lastObstacle.detected) {
+        var d = data.lastObstacle.distanceCm;
+        var pct = Math.min(100, Math.max(0, (d / 60) * 100));
+        prox.style.width = pct + "%";
+        prox.style.background = d < 15 ? "#dc2626" : (d <= 30 ? "#d97706" : "#14a35c");
+      } else if (prox) {
+        prox.style.width = "0%";
+      }
+      // ring gauge
+      var ring = q("[data-dash-ring]");
+      if (ring) {
+        var off = 327 - (327 * (battery / 100));
+        ring.style.strokeDashoffset = off;
+      }
     }
 
     function setPillLive() {
       if (pill) pill.className = "pill-light online";
       if (conn) conn.textContent = "Online";
-    }
-    function setPillDemo() {
-      if (pill) pill.className = "pill-light demo";
-      if (conn) conn.textContent = "Demo data. Bot not connected";
     }
     function setPillOffline() {
       if (pill) pill.className = "pill-light offline";
@@ -199,63 +294,81 @@
     function onLiveSuccess(data) {
       isOnline = true;
       isEmpty = false;
-      simulating = false;
       userChoseLive = userChoseLive; // keep
-      if (demoBadge) demoBadge.hidden = true;
-      if (simBtn) simBtn.textContent = "Use demo data";
       setPillLive();
       if (dashGrid) dashGrid.classList.remove("is-empty");
       if (emptyState) emptyState.hidden = true;
       renderDashboard(data);
+      var botCode = "AGRI-DEMO-0001";
+      try { var t = localStorage.getItem("agripal_token") || sessionStorage.getItem("agripal_token"); } catch (e) {}
+      // bot code from auth-gate user if available
+      if (window.AgriPalAuth && window.AgriPalAuth.user && window.AgriPalAuth.user.botCode) botCode = window.AgriPalAuth.user.botCode;
+      var subsysBot = q("[data-dash-subsys-bot]");
+      if (subsysBot) subsysBot.textContent = botCode;
+      var subsysDrive = q("[data-dash-subsys-drive]");
+      if (subsysDrive) {
+        var mode = data.mode;
+        if (mode === "IDLE") subsysDrive.textContent = "Standby";
+        else subsysDrive.textContent = "Active \u00b7 Row " + (data.positionOnRow != null ? data.positionOnRow : "--");
+      }
+      var subsysArm = q("[data-dash-subsys-arm]");
+      if (subsysArm) subsysArm.textContent = "Ready \u00b7 " + (data.itemsPlucked != null ? data.itemsPlucked : 0) + " plucked";
+      var subsysProx = q("[data-dash-subsys-prox]");
+      if (subsysProx) {
+        var d = (data.lastObstacle && data.lastObstacle.detected) ? data.lastObstacle.distanceCm : null;
+        if (d == null) subsysProx.textContent = "--";
+        else if (d >= 30) subsysProx.textContent = "Clear (" + d + " cm)";
+        else subsysProx.textContent = "Caution (" + d + " cm)";
+      }
+      var subsysPill = q("[data-dash-subsys-pill]");
+      if (subsysPill) {
+        var d2 = (data.lastObstacle && data.lastObstacle.detected) ? data.lastObstacle.distanceCm : 999;
+        if (d2 >= 30) { subsysPill.textContent = "Nominal"; subsysPill.className = "subsys-pill nominal"; }
+        else { subsysPill.textContent = "Caution"; subsysPill.className = "subsys-pill caution"; }
+      }
+      var sync = q("[data-dash-sync]");
+      if (sync) sync.textContent = "Synced just now \u00b7 200 OK";
+      window.dispatchEvent(new CustomEvent('agripal:reading', {detail: {mode: (data.mode === 'LINE_FOLLOWING' ? 'driving' : data.mode === 'AVOIDING_OBSTACLE' ? 'blocked' : data.mode === 'PLUCKING' ? 'picking' : 'idle'), row: (data.positionOnRow != null ? data.positionOnRow : 1), rows: ROW_TOTAL, batteryPct: Math.max(0, Math.min(100, data.batteryPercent != null ? data.batteryPercent : 0)), demo: false}}));
     }
 
     function showEmptyState() {
       isEmpty = true;
       isOnline = false;
-      simulating = false;
-      if (demoBadge) demoBadge.hidden = true;
-      if (simBtn) simBtn.textContent = "Use demo data";
       setPillOffline();
       setWaitingState();
       if (dashGrid) dashGrid.classList.add("is-empty");
       if (emptyState) emptyState.hidden = false;
+      var subsysBot = q("[data-dash-subsys-bot]");
+      if (subsysBot) subsysBot.textContent = "--";
+      var subsysDrive = q("[data-dash-subsys-drive]");
+      if (subsysDrive) subsysDrive.textContent = "--";
+      var subsysArm = q("[data-dash-subsys-arm]");
+      if (subsysArm) subsysArm.textContent = "--";
+      var subsysProx = q("[data-dash-subsys-prox]");
+      if (subsysProx) subsysProx.textContent = "--";
+      var subsysPill = q("[data-dash-subsys-pill]");
+      if (subsysPill) { subsysPill.textContent = "Offline"; subsysPill.className = "subsys-pill offline"; }
+      var battPill = q("[data-dash-batt-pill]");
+      if (battPill) { battPill.textContent = "Offline"; battPill.className = "batt-pill offline"; }
+      var sync = q("[data-dash-sync]");
+      if (sync) sync.textContent = "Offline \u00b7 Cannot reach server";
       stopAll();
     }
 
-    function startSimulation() {
-      stopSimulationTimer();
-      simulating = true;
-      isEmpty = false;
-      isOnline = true;
-      if (dashGrid) dashGrid.classList.remove("is-empty");
-      if (emptyState) emptyState.hidden = true;
-      if (demoBadge) demoBadge.hidden = false;
-      if (simBtn) simBtn.textContent = "Try live data";
-      setPillDemo();
-      simBattery = 78;
-      simItems = 14;
-      simulationTick();
-      simTimer = window.setInterval(simulationTick, 2500);
-    }
-
     function pollStatus() {
-      if (!visible || simulating || isEmpty) return;
+      if (!visible || isEmpty) return;
       fetch(API_URL, { cache: "no-store" })
         .then(function (res) {
           if (!res.ok) throw new Error("HTTP " + res.status);
           return res.json();
         })
         .then(function (data) {
-          if (!visible || simulating || isEmpty) return;
+          if (!visible || isEmpty) return;
           onLiveSuccess(data);
         })
         .catch(function () {
           if (!visible) return;
-          if (!userChoseLive && !simulating) {
-            startSimulation();
-          } else if (userChoseLive) {
-            showEmptyState();
-          }
+          showEmptyState();
         });
     }
 
@@ -269,44 +382,18 @@
       if (liveTimer) { window.clearInterval(liveTimer); liveTimer = null; }
     }
 
-    function stopSimulationTimer() {
-      if (simTimer) { window.clearInterval(simTimer); simTimer = null; }
-    }
-
     function stopAll() {
       stopLivePolling();
-      stopSimulationTimer();
     }
 
-    var simBattery = 78;
-    var simItems = 14;
-
-    function simulationTick() {
-      simBattery = Math.max(20, simBattery - Math.random());
-      simItems = simItems + (Math.random() > 0.6 ? 1 : 0);
-      renderDashboard({
-        batteryPercent: Math.round(simBattery),
-        mode: ["LINE_FOLLOWING", "AVOIDING_OBSTACLE", "PLUCKING", "IDLE"][Math.floor(Math.random() * 4)],
-        lastObstacle: {
-          detected: Math.random() > 0.4,
-          distanceCm: 15 + Math.floor(Math.random() * 40),
-          timestamp: new Date().toISOString()
-        },
-        itemsPlucked: simItems,
-        positionOnRow: 1 + Math.floor(Math.random() * 6)
-      });
-    }
 
     function start() {
       if (visible) return api;
       visible = true;
       userChoseLive = false;
-      simulating = false;
       isEmpty = false;
       if (dashGrid) dashGrid.classList.remove("is-empty");
       if (emptyState) emptyState.hidden = true;
-      if (demoBadge) demoBadge.hidden = true;
-      if (simBtn) simBtn.textContent = "Use demo data";
       setPillOffline();
       startLivePolling();
       return api;
@@ -328,33 +415,6 @@
       }
       container.innerHTML = "";
       return api;
-    }
-
-    if (simBtn) {
-      simBtn.addEventListener("click", function () {
-        stopAll();
-        if (simulating) {
-          userChoseLive = true;
-          simulating = false;
-          if (demoBadge) demoBadge.hidden = true;
-          if (simBtn) simBtn.textContent = "Use demo data";
-          setPillOffline();
-          if (dashGrid) dashGrid.classList.add("is-empty");
-          if (emptyState) emptyState.hidden = false;
-          if (visible) startLivePolling();
-        } else {
-          userChoseLive = false;
-          if (visible) startSimulation();
-        }
-      });
-    }
-
-    if (showDemoBtn) {
-      showDemoBtn.addEventListener("click", function () {
-        userChoseLive = false;
-        stopAll();
-        if (visible) startSimulation();
-      });
     }
 
     var api = {

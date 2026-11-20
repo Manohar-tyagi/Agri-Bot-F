@@ -1,0 +1,508 @@
+(function () {
+  "use strict";
+
+  var reducedMotion = (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  var TINTS = {
+    dawn: ["#ffe3cf", "#fbd9e4"],
+    day: ["#e3f4ec", "#f6f7f3"],
+    evening: ["#ffe0bd", "#fdeede"],
+    night: ["#dfe6f2", "#e9edf5"]
+  };
+
+  function tintForHour(h) {
+    if (h >= 5 && h < 8) return TINTS.dawn;
+    if (h >= 8 && h < 16) return TINTS.day;
+    if (h >= 16 && h < 19) return TINTS.evening;
+    return TINTS.night;
+  }
+
+  var sections = [];
+
+  function makeBg() {
+    var bg = document.createElement("div");
+    bg.className = "ld-bg";
+    bg.setAttribute("aria-hidden", "true");
+    bg.innerHTML = '<div class="ld-blobs"><i></i><i></i><i></i></div><div class="ld-dots"></div><div class="ld-tint"></div>';
+    return bg;
+  }
+
+  function enhanceSection(root) {
+    if (!root || root.__ldEnhanced) return;
+    root.__ldEnhanced = true;
+    root.classList.add("live-section");
+    // ld-bg as first child
+    var bg = makeBg();
+    root.insertBefore(bg, root.firstChild);
+    // ld-field directly below panel
+    var panel = root.querySelector(".glass-card.dashboard") || root.querySelector(".dashboard");
+    var field = document.createElement("div");
+    field.className = "ld-field";
+    field.setAttribute("aria-hidden", "true");
+    var canvas = document.createElement("canvas");
+    field.appendChild(canvas);
+    if (panel && panel.parentNode === root) {
+      panel.insertAdjacentElement("afterend", field);
+    } else {
+      root.appendChild(field);
+    }
+    var ctrl = setupField(root, field, canvas);
+    var sec = { root: root, bg: bg, field: field, canvas: canvas, ctrl: ctrl, state: { mode: "idle", row: 1, rows: 12, batteryPct: 100 } };
+    sections.push(sec);
+    applyTintTo(root);
+    ctrl.setState(sec.state);
+  }
+
+  function scan() {
+    var nodes = document.querySelectorAll(".live-dash, .live-dashboard, .live-section");
+    nodes.forEach(enhanceSection);
+  }
+
+  // MutationObserver for dynamically created dashboards
+  if (window.MutationObserver) {
+    var mo = new MutationObserver(function () { scan(); });
+    mo.observe(document.documentElement, { childList: true, subtree: true });
+  }
+
+  // ---------- Field strip renderer ----------
+  function setupField(root, fieldEl, canvas) {
+    var ctx = null;
+    var dpr = 1, W = 0, H = 0;
+    var reduced = reducedMotion;
+    var state = { mode: "idle", row: 1, rows: 12, batteryPct: 100 };
+    var robotX = 0; // css px
+    var targetX = 0;
+    var particles = null;
+    var rig = null;
+    var useFallback = false;
+    var running = false;
+    var rafId = 0;
+    var visible = false;
+    var tabVisible = !document.hidden;
+    var lastTime = 0;
+    var trail = []; // recent robotX
+    var mobile = window.innerWidth < 700;
+    var bobPhase = 0;
+    var blinkState = 0;
+
+    // init particles/rig
+    try {
+      if (typeof buildParticles === "function") {
+        particles = buildParticles(450);
+      } else if (window.buildParticles) {
+        particles = window.buildParticles(450);
+      }
+      var RigCtor = (typeof BotRig === "function") ? BotRig : window.BotRig;
+      if (particles && RigCtor) {
+        rig = new RigCtor(particles);
+        rig.nextWave = Infinity;
+      } else {
+        useFallback = true;
+      }
+    } catch (e) {
+      useFallback = true;
+      particles = null; rig = null;
+    }
+    if (!particles) useFallback = true;
+
+    function resize() {
+      var b = fieldEl.getBoundingClientRect();
+      if (b.width === 0 || b.height === 0) return false;
+      mobile = window.innerWidth < 700;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = Math.round(b.width);
+      H = Math.round(b.height);
+      canvas.width = Math.max(1, Math.round(W * dpr));
+      canvas.height = Math.max(1, Math.round(H * dpr));
+      canvas.style.width = W + "px";
+      canvas.style.height = H + "px";
+      try { ctx = canvas.getContext("2d"); } catch (e) { ctx = null; }
+      if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // init robotX
+      targetX = slotX(state.row);
+      if (reduced || robotX === 0) robotX = targetX;
+      if (W > 0) {
+        // clamp
+      }
+      return true;
+    }
+
+    function slotX(row) {
+      var n = state.rows || 12;
+      var pad = W * 0.08;
+      var span = W - pad * 2;
+      var step = n > 1 ? span / (n - 1) : 0;
+      var idx = Math.max(1, Math.min(n, row)) - 1;
+      return pad + idx * step;
+    }
+
+    function groundY() { return H - 10; }
+
+    function drawSprout(x, y, color, scale, halo) {
+      if (!ctx) return;
+      if (halo) {
+        var g = ctx.createRadialGradient(x, y - 6 * scale, 0, x, y - 6 * scale, 18 * scale);
+        g.addColorStop(0, "rgba(20,163,92,0.25)");
+        g.addColorStop(1, "rgba(20,163,92,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(x, y - 6 * scale, 18 * scale, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2 * scale;
+      ctx.lineCap = "round";
+      // stem
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y - 12 * scale);
+      ctx.stroke();
+      // leaves
+      ctx.beginPath();
+      ctx.moveTo(x, y - 8 * scale);
+      ctx.quadraticCurveTo(x - 6 * scale, y - 12 * scale, x - 8 * scale, y - 14 * scale);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, y - 8 * scale);
+      ctx.quadraticCurveTo(x + 6 * scale, y - 12 * scale, x + 8 * scale, y - 14 * scale);
+      ctx.stroke();
+    }
+
+    function drawField(now) {
+      if (!ctx) return;
+      ctx.clearRect(0, 0, W, H);
+      var gy = groundY();
+      // ground line
+      ctx.strokeStyle = "#c9cfc6";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, gy);
+      ctx.lineTo(W, gy);
+      ctx.stroke();
+
+      var n = state.rows || 12;
+      var cur = state.row || 1;
+      for (var i = 0; i < n; i++) {
+        var x = slotX(i + 1);
+        var isPassed = i < cur - 1;
+        var isCurrent = i === cur - 1;
+        var color = isPassed ? "#14a35c" : (isCurrent ? "#14a35c" : "#b9d9c5");
+        var sc = isCurrent ? 1.3 : 1;
+        drawSprout(x, gy, color, sc, isCurrent);
+      }
+
+      // robot
+      var targetHeight = mobile ? 48 : 64;
+      var scale = targetHeight / 750;
+      // exponential smoothing for x
+      if (!reduced) {
+        robotX += (targetX - robotX) * 0.12;
+        if (Math.abs(targetX - robotX) < 0.3) robotX = targetX;
+      } else {
+        robotX = targetX;
+      }
+      // bob
+      var bob = 0;
+      if (!reduced && state.mode === "driving") {
+        bob = Math.sin(now / 1000 * Math.PI * 2 * 6) * 1;
+      }
+      var offX = robotX - 300 * scale;
+      var offY = gy - 705 * scale + bob;
+
+      // trail (driving only)
+      if (!reduced && state.mode === "driving") {
+        // sample
+        if (trail.length === 0 || Math.abs(trail[trail.length - 1] - robotX) > 2) {
+          trail.push(robotX);
+          if (trail.length > 8) trail.shift();
+        }
+        // draw 6 fading dots behind
+        var dir = (targetX >= robotX) ? -1 : 1; // moving right -> trail left
+        // use previous positions
+        for (var t = 0; t < 6; t++) {
+          var idx = trail.length - 2 - t;
+          if (idx < 0) break;
+          var tx = trail[idx];
+          var alpha = 0.35 * (1 - t / 6);
+          var r = 3 * (1 - t / 6) + 1;
+          ctx.fillStyle = "rgba(20,163,92," + alpha.toFixed(3) + ")";
+          ctx.beginPath();
+          ctx.arc(tx, gy - 2, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        trail = [];
+      }
+
+      // draw robot particles
+      if (useFallback || !particles) {
+        // green rounded square with two eyes
+        var rx = offX + 300 * scale - 14 * scale * 750 / 750; // center
+        // simple square
+        var sqSize = (mobile ? 32 : 42);
+        var cx = robotX;
+        var cy = offY + 300 * scale;
+        ctx.fillStyle = "#14a35c";
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(cx - sqSize / 2, cy - sqSize / 2, sqSize, sqSize, 8);
+        else ctx.rect(cx - sqSize / 2, cy - sqSize / 2, sqSize, sqSize);
+        ctx.fill();
+        // eyes
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath(); ctx.arc(cx - sqSize / 4, cy - sqSize / 6, sqSize / 8, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + sqSize / 4, cy - sqSize / 6, sqSize / 8, 0, Math.PI * 2); ctx.fill();
+      } else {
+        // update rig
+        if (rig && !reduced) {
+          try {
+            rig.update(1 / 60, { x: 300, y: 262 }, false);
+          } catch (e) {}
+          // picking triggers wave
+          if (state.mode === "picking" && !rig.waving) {
+            try { rig.triggerWave(); } catch (e) {}
+          }
+        }
+        // draw dots
+        var dotR = 1.1;
+        for (var i = 0; i < particles.length; i++) {
+          var p = particles[i];
+          var px = p.x, py = p.y;
+          if (rig && !reduced) {
+            try {
+              px = rig.x[i] + rig.ox[i];
+              py = rig.y[i] + rig.oy[i];
+            } catch (e) {}
+          }
+          var sx = offX + px * scale;
+          var sy = offY + py * scale;
+          var lum = (p.lum != null) ? p.lum : 0.5;
+          var region = p.region;
+          // color
+          var color;
+          if (region === 1) color = (state.mode === "driving") ? "#3ddc84" : "#14a35c";
+          else if (lum < 0.35) color = "#0b7a43";
+          else if (lum < 0.7) color = "#14a35c";
+          else color = "#3ddc84";
+          var alpha = 0.6 + lum * 0.4;
+          if (state.mode === "driving" && region === 1) alpha = Math.min(1, alpha + 0.15);
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(sx, sy, dotR, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      // blocked "!" pulse
+      if (state.mode === "blocked") {
+        var pulse = 0.6 + 0.4 * Math.sin(now / 1000 * Math.PI * 2 * 2);
+        var hx = robotX;
+        var hy = offY + 170 * scale - 10;
+        ctx.globalAlpha = pulse;
+        ctx.fillStyle = "#d97706";
+        ctx.font = "bold " + Math.round(24 * (mobile ? 0.8 : 1)) + "px Inter, system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("!", hx, hy);
+        ctx.globalAlpha = 1;
+      }
+
+      // pill "Row X"
+      var pillText = "Row " + (state.row || 1);
+      var pillX = robotX;
+      var pillY = offY + 120 * scale - 16;
+      ctx.font = "600 13px Inter, system-ui, sans-serif";
+      var tw = ctx.measureText(pillText).width;
+      var pw = tw + 16;
+      var ph = 20;
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(pillX - pw / 2, pillY - ph / 2, pw, ph, 10);
+      else ctx.rect(pillX - pw / 2, pillY - ph / 2, pw, ph);
+      ctx.fill();
+      ctx.fillStyle = "#0b7a43";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(pillText, pillX, pillY);
+
+      // idle blink: handled by rig update; no extra.
+    }
+
+    function loop(now) {
+      if (!running) return;
+      if (!lastTime) lastTime = now;
+      var dt = (now - lastTime) / 1000;
+      lastTime = now;
+      try { drawField(now); } catch (e) { /* never break */ }
+      rafId = requestAnimationFrame(loop);
+    }
+
+    function start() {
+      if (running) return;
+      visible = true;
+      if (!ctx) resize();
+      if (!ctx) return;
+      running = true;
+      lastTime = 0;
+      rafId = requestAnimationFrame(loop);
+    }
+
+    function stop() {
+      running = false;
+      if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+    }
+
+    // IntersectionObserver
+    if (window.IntersectionObserver) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          visible = e.isIntersecting;
+          if (visible && tabVisible) start();
+          else stop();
+        });
+      }, { threshold: 0.1 });
+      io.observe(fieldEl);
+    } else {
+      visible = true;
+      if (tabVisible) start();
+    }
+
+    // ResizeObserver
+    if (window.ResizeObserver) {
+      var ro = new ResizeObserver(function () {
+        resize();
+      });
+      ro.observe(fieldEl);
+    }
+    window.addEventListener("resize", function () { resize(); mobile = window.innerWidth < 700; });
+
+    document.addEventListener("visibilitychange", function () {
+      tabVisible = !document.hidden;
+      if (visible && tabVisible) start();
+      else stop();
+    });
+
+    // initial resize
+    setTimeout(function () { resize(); }, 0);
+
+    var ctrl = {
+      setState: function (s) {
+        if (!s) return;
+        state.mode = s.mode || state.mode;
+        state.row = (s.row != null) ? s.row : state.row;
+        state.rows = (s.rows != null) ? s.rows : state.rows;
+        state.batteryPct = (s.batteryPct != null) ? s.batteryPct : state.batteryPct;
+        targetX = slotX(state.row);
+      },
+      start: start,
+      stop: stop
+    };
+    // expose state ref for section
+    ctrl.state = state;
+    return ctrl;
+  }
+
+  // ---------- tint ----------
+  function applyTintTo(root) {
+    var h = new Date().getHours();
+    var t = tintForHour(h);
+    root.style.setProperty("--ld-tint-a", t[0]);
+    root.style.setProperty("--ld-tint-b", t[1]);
+  }
+  function applyTint() {
+    sections.forEach(function (s) { applyTintTo(s.root); });
+  }
+  // re-check tint every 10 minutes
+  setInterval(applyTint, 10 * 60 * 1000);
+
+  // ---------- pulse ring ----------
+  var lastRingTime = 0;
+  function statusColor(detail) {
+    var battery = detail.batteryPct;
+    var mode = detail.mode;
+    if (battery != null && battery < 20) return "#dc2626";
+    if (mode === "blocked" || (battery != null && battery >= 20 && battery <= 49)) return "#d97706";
+    return "#16a34a";
+  }
+  function emitPulseRing(detail) {
+    var now = Date.now();
+    if (now - lastRingTime < 1500) return;
+    lastRingTime = now;
+    if (reducedMotion) return; // no pulse ring
+    sections.forEach(function (s) {
+      var root = s.root;
+      // find status pill dot
+      var dot = root.querySelector(".pill-light .status-dot") || root.querySelector(".status-dot");
+      var ring = document.createElement("div");
+      ring.className = "ld-pulse-ring";
+      ring.style.borderColor = statusColor(detail);
+      // position relative to root
+      var rootRect = root.getBoundingClientRect();
+      if (dot) {
+        var dr = dot.getBoundingClientRect();
+        ring.style.left = (dr.left + dr.width / 2 - rootRect.left) + "px";
+        ring.style.top = (dr.top + dr.height / 2 - rootRect.top) + "px";
+      } else {
+        ring.style.left = "50%";
+        ring.style.top = "40px";
+      }
+      root.appendChild(ring);
+      setTimeout(function () {
+        if (ring.parentNode) ring.parentNode.removeChild(ring);
+      }, 1900);
+    });
+  }
+
+  // ---------- updated line ----------
+  function updateUpdatedLine() {
+    sections.forEach(function (s) {
+      var src = s.root.querySelector(".dash-source");
+      if (!src) return;
+      var span = src.querySelector(".ld-updated");
+      if (!span) {
+        span = document.createElement("span");
+        span.className = "ld-updated";
+        src.appendChild(span);
+      }
+      var start = Date.now();
+      span.textContent = " \u00b7 Updated just now";
+      if (src.__ldTimer) clearInterval(src.__ldTimer);
+      src.__ldTimer = setInterval(function () {
+        var sec = Math.round((Date.now() - start) / 1000);
+        if (sec < 1) span.textContent = " \u00b7 Updated just now";
+        else span.textContent = " \u00b7 Updated " + sec + "s ago";
+      }, 1000);
+    });
+  }
+
+  // ---------- event listener ----------
+  window.addEventListener("agripal:reading", function (e) {
+    var detail = (e && e.detail) ? e.detail : {};
+    sections.forEach(function (s) {
+      s.state.mode = detail.mode || s.state.mode;
+      s.state.row = (detail.row != null) ? detail.row : s.state.row;
+      s.state.rows = (detail.rows != null) ? detail.rows : s.state.rows;
+      s.state.batteryPct = (detail.batteryPct != null) ? detail.batteryPct : s.state.batteryPct;
+      if (s.ctrl && s.ctrl.setState) s.ctrl.setState(s.state);
+    });
+    emitPulseRing(detail);
+    updateUpdatedLine();
+    applyTint();
+  });
+
+  // ---------- init ----------
+  function init() {
+    scan();
+    // tint initial
+    applyTint();
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+  // also scan later for late-mounted dashboards
+  setTimeout(scan, 500);
+  setTimeout(scan, 1500);
+})();

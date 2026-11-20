@@ -508,6 +508,7 @@
 
   function returnHome() {
     closeContactView(true);
+    if (window.AgriPalAuth && window.AgriPalAuth.closeAll) window.AgriPalAuth.closeAll();
     setNavbarOverlay(false);
     setNavbarTheme("light");
     setNavActive("home");
@@ -524,6 +525,12 @@
     if (window.AgriPalParticles && window.AgriPalParticles.isOpen()) {
       window.AgriPalParticles.close();
     }
+    var homeMain = document.getElementById("main");
+    if (homeMain) homeMain.style.display = "";
+    document.querySelectorAll(".pt-page").forEach(function (p) { p.style.display = ""; });
+    var homeFooter = document.querySelector(".footer-site, .footer");
+    if (homeFooter) homeFooter.style.display = "";
+    if (window.AgriPalAuth && window.AgriPalAuth.restoreHomeSections) window.AgriPalAuth.restoreHomeSections();
     history.replaceState(null, "", location.pathname);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -533,6 +540,7 @@
     var trig = e.target.closest("[data-modal]");
     if (!trig) return;
     var key = trig.getAttribute("data-modal");
+    if (window.AgriPalAuth && window.AgriPalAuth.closeAll) window.AgriPalAuth.closeAll();
     if (!key || !tabKeyByHref["#" + key] && key !== "home" && key !== "components" && key !== "specs" && key !== "status") return;
     var modalKey = key;
     if (isContactOpen()) closeContactView(true);

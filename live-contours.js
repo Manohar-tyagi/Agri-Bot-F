@@ -1,0 +1,108 @@
+(function () {
+  "use strict";
+
+  var OPTIONS = {
+    color: 'rgba(30, 95, 62, 0.24)',
+    lineWidth: 1.1,
+    scale: 950,
+    levels: 7,
+    cell: 18,
+    speed: 0.05,
+    mouse: true,
+    parallax: 0.3,
+    fps: 30
+  };
+
+  var tracked = [];
+  var warned = false;
+
+  function optsFor() {
+    var o = {};
+    for (var k in OPTIONS) o[k] = OPTIONS[k];
+    if (window.innerWidth < 700) {
+      o.cell = 24;
+      o.levels = 5;
+      o.fps = 24;
+    }
+    return o;
+  }
+
+  function findBg(section) {
+    return section.querySelector ? section.querySelector('.ld-bg') : null;
+  }
+
+  function outerRoot(section) {
+    var cur = section;
+    while (cur && cur.parentElement) {
+      cur = cur.parentElement;
+      if (cur.classList && (cur.classList.contains('pt-rows') || (cur.className && cur.className.indexOf('pt-rows') !== -1))) return cur;
+    }
+    return null;
+  }
+
+  function enhance(section) {
+    if (!section || section.__ldContours) return;
+    section.__ldContours = true;
+    section.classList.add('live-section');
+
+    var bg = findBg(section);
+    if (bg) {
+      var dots = bg.querySelector('.ld-dots');
+      if (dots && dots.parentNode) dots.parentNode.removeChild(dots);
+    }
+
+    var root = outerRoot(section) || section;
+    if (root.__ldContoursRoot) { section.__ldContours = true; return; }
+    root.__ldContoursRoot = true;
+    root.classList.add('live-contours-root');
+    // apply relative/isolate to root
+    try { root.style.position = 'relative'; root.style.isolation = 'isolate'; } catch (e) {}
+
+    var instance = null;
+    try {
+      if (typeof createContours !== 'function') {
+        throw new Error('createContours is not defined');
+      }
+      instance = createContours(root, optsFor());
+    } catch (e) {
+      if (!warned) {
+        warned = true;
+        console.warn('live-contours: ' + (e && e.message ? e.message : e));
+      }
+      try { if (instance && typeof instance.destroy === 'function') instance.destroy(); } catch (e2) {}
+      instance = null;
+    }
+    tracked.push({ section: section, instance: instance });
+  }
+
+  function cleanup() {
+    for (var i = tracked.length - 1; i >= 0; i--) {
+      var t = tracked[i];
+      if (!document.contains(t.section)) {
+        try { if (t.instance && typeof t.instance.destroy === 'function') t.instance.destroy(); } catch (e) {}
+        if (t.section) t.section.__ldContours = false;
+        tracked.splice(i, 1);
+      }
+    }
+  }
+
+  function scan() {
+    cleanup();
+    var nodes = document.querySelectorAll('.live-section, .live-dash');
+    nodes.forEach(enhance);
+  }
+
+  if (window.MutationObserver) {
+    var mo = new MutationObserver(function () { scan(); });
+    mo.observe(document.documentElement, { childList: true, subtree: true });
+  }
+
+  function init() { scan(); }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+  setTimeout(scan, 500);
+  setTimeout(scan, 1500);
+})();

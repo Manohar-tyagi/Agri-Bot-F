@@ -1,0 +1,142 @@
+/* ============================================================================
+   Live Status backdrop — scoped to the Live Status section only
+   ========================================================================= */
+@property --ld-tint-a { syntax: "<color>"; initial-value: #e3f4ec; inherits: true; }
+@property --ld-tint-b { syntax: "<color>"; initial-value: #f6f7f3; inherits: true; }
+
+.live-section, .live-dash {
+  position: relative;
+  --ld-tint-a: #e3f4ec;
+  --ld-tint-b: #f6f7f3;
+}
+
+/* children sit above the backdrop */
+.live-section > *, .live-dash > * { position: relative; z-index: 1; }
+.live-section .ld-bg, .live-dash .ld-bg { z-index: 0; }
+.live-section .ld-field, .live-dash .ld-field { z-index: 0; }
+
+/* ---- ld-bg wrapper ---- */
+.live-section .ld-bg, .live-dash .ld-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  background: #f6f7f3;
+}
+
+/* soft blobs */
+.live-section .ld-bg .ld-blobs, .live-dash .ld-bg .ld-blobs {
+  position: absolute; inset: 0;
+}
+.live-section .ld-bg .ld-blobs i, .live-dash .ld-bg .ld-blobs i {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(46px);
+  opacity: 0.55;
+  will-change: transform;
+}
+.live-section .ld-bg .ld-blobs i:nth-child(1),
+.live-dash .ld-bg .ld-blobs i:nth-child(1) {
+  width: 55%; height: 55%; left: -8%; top: -12%;
+  background: radial-gradient(circle at center, #bff0d4 0%, transparent 68%);
+  animation: ldDrift1 30s ease-in-out infinite alternate;
+}
+.live-section .ld-bg .ld-blobs i:nth-child(2),
+.live-dash .ld-bg .ld-blobs i:nth-child(2) {
+  width: 50%; height: 50%; right: -6%; top: -8%;
+  background: radial-gradient(circle at center, #d9d4f8 0%, transparent 68%);
+  animation: ldDrift2 36s ease-in-out infinite alternate;
+}
+.live-section .ld-bg .ld-blobs i:nth-child(3),
+.live-dash .ld-bg .ld-blobs i:nth-child(3) {
+  width: 60%; height: 48%; left: 20%; bottom: -16%;
+  background: radial-gradient(circle at center, #fddcc2 0%, transparent 68%);
+  animation: ldDrift3 40s ease-in-out infinite alternate;
+}
+@keyframes ldDrift1 { 0% { transform: translate(-24px, -18px); } 100% { transform: translate(24px, 18px); } }
+@keyframes ldDrift2 { 0% { transform: translate(20px, -22px); } 100% { transform: translate(-20px, 22px); } }
+@keyframes ldDrift3 { 0% { transform: translate(-16px, 20px); } 100% { transform: translate(16px, -20px); } }
+
+/* dot field */
+.live-section .ld-bg .ld-dots, .live-dash .ld-bg .ld-dots {
+  position: absolute; inset: 0;
+  background-image: radial-gradient(circle, #14a35c 1.2px, transparent 1.3px);
+  background-size: 16px 16px;
+  opacity: 0.22;
+  mask-image: radial-gradient(ellipse at center, #000 20%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 20%, transparent 75%);
+}
+
+/* time-of-day tint */
+.live-section .ld-bg .ld-tint, .live-dash .ld-bg .ld-tint {
+  position: absolute; inset: 0;
+  opacity: 0.5;
+  background: linear-gradient(135deg, var(--ld-tint-a), var(--ld-tint-b));
+  transition: background 3s ease, --ld-tint-a 3s ease, --ld-tint-b 3s ease;
+}
+
+/* ---- frosted panel ---- */
+.live-section .glass-card.dashboard, .live-dash .glass-card.dashboard {
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  backdrop-filter: blur(10px) saturate(1.1);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 36px rgba(20, 60, 40, 0.12);
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .live-section .glass-card.dashboard, .live-dash .glass-card.dashboard {
+    background: rgba(255, 255, 255, 0.94);
+  }
+}
+
+/* ---- field strip ---- */
+.live-section .ld-field, .live-dash .ld-field {
+  margin-top: 28px;
+  width: 100%;
+  height: 120px;
+  position: relative;
+  pointer-events: none;
+  overflow: hidden;
+}
+@media (max-width: 700px) {
+  .live-section .ld-field, .live-dash .ld-field { height: 90px; }
+}
+.live-section .ld-field canvas, .live-dash .ld-field canvas {
+  width: 100%; height: 100%; display: block;
+}
+
+/* ---- pulse ring ---- */
+.live-section .ld-pulse-ring, .live-dash .ld-pulse-ring {
+  position: absolute;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: 2px solid;
+  pointer-events: none;
+  z-index: 2;
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0.35;
+  animation: ldRing 1.8s ease-out forwards;
+}
+@keyframes ldRing {
+  to { transform: translate(-50%, -50%) scale(14); opacity: 0; }
+}
+
+/* ---- updated line ---- */
+.live-section .ld-updated, .live-dash .ld-updated {
+  color: #5a6570;
+}
+
+/* ---- phones ---- */
+@media (max-width: 768px) {
+  .live-section .ld-bg .ld-dots, .live-dash .ld-bg .ld-dots { opacity: 0.14; }
+  .live-section .ld-bg .ld-blobs i:nth-child(3),
+  .live-dash .ld-bg .ld-blobs i:nth-child(3) { display: none; }
+}
+
+/* ---- reduced motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  .live-section .ld-bg .ld-blobs i, .live-dash .ld-bg .ld-blobs i { animation: none; }
+  .live-section .ld-pulse-ring, .live-dash .ld-pulse-ring { display: none; }
+  .live-section .ld-empty-dot, .live-dash .ld-empty-dot { animation: none; }
+}

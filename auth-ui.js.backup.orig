@@ -1,0 +1,413 @@
+(function () {
+  "use strict";
+
+  var API_BASE = "http://localhost:8080";
+
+  /* ---------- Auth module ---------- */
+  var TOKEN_KEY = "agripal_token";
+  function getToken() { return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY); }
+  function setToken(tok, remember) {
+    if (remember) { localStorage.setItem(TOKEN_KEY, tok); sessionStorage.removeItem(TOKEN_KEY); }
+    else { sessionStorage.setItem(TOKEN_KEY, tok); localStorage.removeItem(TOKEN_KEY); }
+  }
+  function clearToken() { localStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(TOKEN_KEY); }
+
+  function authFetch(url, opts) {
+    opts = opts || {};
+    opts.headers = opts.headers || {};
+    var t = getToken();
+    if (t) opts.headers["Authorization"] = "Bearer " + t;
+    return fetch(url, opts);
+  }
+
+  async function apiMe() {
+    var res = await authFetch(API_BASE + "/api/auth/me");
+    if (res.status === 401) { clearToken(); return null; }
+    if (!res.ok) throw new Error("network");
+    return res.json();
+  }
+
+  /* ---------- Views ---------- */
+  var loginView = document.getElementById("login");
+  var signupView = document.getElementById("signup");
+
+  function openView(view, ev) {
+    if (!view) return;
+    if (window.AgriPalParticles && window.AgriPalParticles.isOpen()) try { window.AgriPalParticles.close(); } catch (e) {}
+    if (window.AgriPalUI && window.AgriPalUI.closeModal) try { window.AgriPalUI.closeModal(); } catch (e) {}
+    if (window.AgriPalNav) {
+      try { window.AgriPalNav.setOverlay(true); } catch (e) {}
+      try { window.AgriPalNav.setDark("dark"); } catch (e) {}
+    }
+    document.body.style.overflow = "hidden";
+    if (location.hash !== "#" + view.id) {
+      try { history.pushState({ auth: view.id }, "", "#" + view.id); } catch (e) { location.hash = "#" + view.id; }
+    }
+    view.setAttribute("aria-hidden", "false");
+    var origin = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    if (ev && ev.clientX) origin = { x: ev.clientX, y: ev.clientY };
+    var radius = Math.hypot(window.innerWidth, window.innerHeight) * 1.15;
+    view.style.setProperty("--c0", "circle(0px at " + origin.x + "px " + origin.y + "px)");
+    view.style.setProperty("--c1", "circle(" + radius + "px at " + origin.x + "px " + origin.y + "px)");
+    view.classList.remove("is-closing");
+    void view.offsetWidth;
+    view.classList.add("is-open");
+    startChars(view);
+  }
+
+  function closeView(view, immediate) {
+    if (!view) return;
+    view.classList.remove("is-open");
+    if (immediate) { view.classList.remove("is-closing"); view.setAttribute("aria-hidden", "true"); document.body.style.overflow = ""; stopChars(); return; }
+    view.classList.add("is-closing");
+    setTimeout(function () {
+      view.classList.remove("is-closing");
+      view.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+      stopChars();
+    }, 660);
+  }
+
+  /* ---------- Character animation ---------- */
+  var rafId = 0;
+  var currentView = null;
+  var charState = {
+    pointer: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+    smooth: {},
+    blinkTimers: {},
+    hopTimers: {}
+  };
+
+  var CHARACTERS = [
+    { id: "char-tall", face: "face-tall", body: "body-tall", maxMove: 9, maxLean: 2 },
+    { id: "char-round", face: "face-round", body: "body-round", maxMove: 12, maxLean: 2 },
+    { id: "char-short", face: "face-short", body: "body-short", maxMove: 8, maxLean: 2 },
+    { id: "char-pill", face: "face-pill", body: "body-pill", maxMove: 10, maxLean: 2 }
+  ];
+
+  function getFaceCenter(svg, face) {
+    try {
+      var el = svg.querySelector("#" + face);
+      if (!el) return { x: 0, y: 0 };
+      var r = el.getBoundingClientRect();
+      var s = svg.getBoundingClientRect();
+      return { x: (r.left + r.width / 2 - s.left), y: (r.top + r.height / 2 - s.top) };
+    } catch (e) { return { x: 0, y: 0 }; }
+  }
+
+  function startChars(view) {
+    currentView = view;
+    stopChars();
+    var svg = view.querySelector(".auth-chars");
+    if (!svg) return;
+    // entrance: staggered rise
+    var order = ["char-round", "char-tall", "char-short", "char-pill"];
+    order.forEach(function (id, i) {
+      var g = svg.querySelector("#" + id);
+      if (!g) return;
+      g.style.transition = "transform 800ms cubic-bezier(.2,1.4,.4,1)";
+      g.style.transform = "translateY(120%)";
+      setTimeout(function () { g.style.transform = "translateY(0)"; }, i * 90);
+    });
+    // init smooth state
+    CHARACTERS.forEach(function (c) {
+      charState.smooth[c.id] = { fx: 0, fy: 0, lean: 0 };
+    });
+    rafId = requestAnimationFrame(tickChars);
+  }
+
+  function stopChars() { if (rafId) { cancelAnimationFrame(rafId); rafId = 0; } currentView = null; }
+
+  function tickChars() {
+    if (!currentView) return;
+    var svg = currentView.querySelector(".auth-chars");
+    if (!svg) { rafId = requestAnimationFrame(tickChars); return; }
+    // mouse
+    var rect = svg.getBoundingClientRect();
+    // use tracked pointer
+    CHARACTERS.forEach(function (c) {
+      var faceEl = svg.querySelector("#" + c.face);
+      if (!faceEl) return;
+      var fr = faceEl.getBoundingClientRect();
+      var fcx = fr.left + fr.width / 2 - rect.left;
+      var fcy = fr.top + fr.height / 2 - rect.top;
+      var px = charState.pointer.x - rect.left;
+      var py = charState.pointer.y - rect.top;
+      var dx = px - fcx, dy = py - fcy;
+      var dist = Math.hypot(dx, dy);
+      var strength = Math.min(1, dist / 400);
+      var maxM = c.maxMove;
+      var targetX = (dist > 0 ? (dx / dist) * maxM * strength : 0);
+      var targetY = (dist > 0 ? (dy / dist) * maxM * strength : 0);
+      // pupil shift up to 2.4
+      var pupilShift = 2.4 * strength;
+      var ptx = (dist > 0 ? (dx / dist) * pupilShift : 0);
+      var pty = (dist > 0 ? (dy / dist) * pupilShift : 0);
+      // lean
+      var leanTarget = Math.max(-2, Math.min(2, (dx / Math.max(dist,1)) * 2 * strength));
+      var sm = charState.smooth[c.id];
+      sm.fx += (targetX - sm.fx) * 0.12;
+      sm.fy += (targetY - sm.fy) * 0.12;
+      sm.lean += (leanTarget - sm.lean) * 0.12;
+      faceEl.setAttribute("transform", "translate(" + sm.fx.toFixed(2) + "," + sm.fy.toFixed(2) + ")");
+      // lean body
+      var bodyEl = svg.querySelector("#" + c.body);
+      if (bodyEl) bodyEl.setAttribute("transform", "rotate(" + sm.lean.toFixed(2) + ")");
+      // pupils
+      var pupils = faceEl.querySelectorAll(".pupil");
+      pupils.forEach(function (p) {
+        // original cx/cy stored? We'll approximate by shifting from base; use data attrs
+        if (!p.dataset.bx) { p.dataset.bx = p.getAttribute("cx"); p.dataset.by = p.getAttribute("cy"); }
+        var bx = parseFloat(p.dataset.bx), by = parseFloat(p.dataset.by);
+        p.setAttribute("cx", (bx + ptx).toFixed(2));
+        p.setAttribute("cy", (by + pty).toFixed(2));
+      });
+    });
+    rafId = requestAnimationFrame(tickChars);
+  }
+
+  window.addEventListener("pointermove", function (e) {
+    charState.pointer.x = e.clientX;
+    charState.pointer.y = e.clientY;
+  });
+
+  /* ---------- Form helpers ---------- */
+  function fieldError(form, name, msg) {
+    var el = form.querySelector('[data-for="' + name + '"]');
+    if (el) el.textContent = msg || "";
+    var wrap = null;
+    var input = form.querySelector('[name="' + name + '"]');
+    if (input) {
+      wrap = input.closest(".auth-field");
+      if (wrap) wrap.classList.toggle("is-invalid", !!msg);
+    }
+  }
+  function clearErrors(form) {
+    form.querySelectorAll(".auth-err").forEach(function (e) { e.textContent = ""; });
+    form.querySelectorAll(".auth-field").forEach(function (f) { f.classList.remove("is-invalid"); });
+  }
+
+  function validateEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+  function validatePassword(v) { return v.length >= 8 && /[a-zA-Z]/.test(v) && /\d/.test(v); }
+
+  /* ---------- Login form ---------- */
+  var loginForm = document.getElementById("login-form");
+  if (loginForm) {
+    var forgot = document.getElementById("login-forgot");
+    var forgotNote = document.getElementById("login-forgot-note");
+    if (forgot) forgot.addEventListener("click", function (e) { e.preventDefault(); if (forgotNote) forgotNote.hidden = false; });
+
+    var eyeBtn = loginForm.querySelector('[data-toggle="login-password"]');
+    if (eyeBtn) eyeBtn.addEventListener("click", function () {
+      var inp = document.getElementById("login-password");
+      var show = inp.type === "password";
+      inp.type = show ? "text" : "password";
+      eyeBtn.setAttribute("aria-pressed", show ? "true" : "false");
+    });
+
+    loginForm.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      clearErrors(loginForm);
+      var email = loginForm.querySelector('[name="email"]').value.trim();
+      var password = loginForm.querySelector('[name="password"]').value;
+      var remember = document.getElementById("login-remember").checked;
+      var ok = true;
+      if (!validateEmail(email)) { fieldError(loginForm, "email", "Enter a valid email."); ok = false; }
+      if (!password) { fieldError(loginForm, "password", "Password is required."); ok = false; }
+      if (!ok) return;
+      var btn = document.getElementById("login-submit");
+      btn.disabled = true; btn.textContent = "Logging in…";
+      try {
+        var res = await fetch(API_BASE + "/api/auth/login", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email, password: password, remember: remember })
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (res.ok) {
+          setToken(data.token, remember);
+          // success mood + hop
+          btn.textContent = "Log in";
+          btn.disabled = false;
+          // navigate
+          setTimeout(function () {
+            var ret = sessionStorage.getItem("agripal_returnTo") || "#live-status";
+            sessionStorage.removeItem("agripal_returnTo");
+            location.hash = ret;
+          }, 900);
+        } else {
+          btn.textContent = "Log in";
+          btn.disabled = false;
+          if (res.status === 401) {
+            fieldError(loginForm, "email", "Invalid email or password.");
+            fieldError(loginForm, "password", "Invalid email or password.");
+          } else if (res.status === 429) {
+            var b = document.getElementById("login-banner"); if (b) { b.textContent = "Too many attempts. Try again in a few minutes."; b.hidden = false; }
+          } else if (res.status === 400 && data.errors) {
+            Object.keys(data.errors).forEach(function (k) { fieldError(loginForm, k, data.errors[k]); });
+          } else {
+            var b2 = document.getElementById("login-banner"); if (b2) { b2.textContent = data.message || "Login failed."; b2.hidden = false; }
+          }
+        }
+      } catch (err) {
+        btn.textContent = "Log in";
+        btn.disabled = false;
+        var b3 = document.getElementById("login-banner"); if (b3) { b3.textContent = "Can't reach the Agri-Pal server. Start the Java backend and try again."; b3.hidden = false; }
+      }
+    });
+  }
+
+  /* ---------- Signup ---------- */
+  var step1 = document.getElementById("signup-step1");
+  var step2 = document.getElementById("signup-step2");
+  var botCode = null, botName = null;
+
+  function showStep(n) {
+    document.querySelectorAll("#signup .auth-step").forEach(function (s) { s.hidden = true; });
+    var sel = document.querySelector('#signup .auth-step[data-step="' + n + '"]');
+    if (sel) sel.hidden = false;
+    // step bars
+    var bars = document.querySelectorAll("#signup .auth-stepbar");
+    bars.forEach(function (b, i) { b.classList.toggle("active", i < (n === 1 ? 1 : 2)); });
+    var label = document.querySelector("#signup .auth-steplabel");
+    if (label) label.textContent = (n === 1 ? "Step 1 of 2" : "Step 2 of 2");
+  }
+
+  if (step1) {
+    step1.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      clearErrors(step1);
+      var code = document.getElementById("signup-code").value.trim().toUpperCase();
+      var btn = document.getElementById("signup-check");
+      btn.disabled = true; btn.textContent = "Checking…";
+      try {
+        var res = await fetch(API_BASE + "/api/bots/verify", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: code })
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (res.ok) {
+          botCode = code; botName = data.botName || data.name || "Bot";
+          var chip = document.getElementById("signup-chip");
+          if (chip) { chip.textContent = "Bot found: " + botName; chip.hidden = false; }
+          btn.textContent = "Check code"; btn.disabled = false;
+          setTimeout(function () { showStep(2); }, 600);
+        } else {
+          btn.textContent = "Check code"; btn.disabled = false;
+          fieldError(step1, "code", data.message || "Invalid code.");
+        }
+      } catch (err) {
+        btn.textContent = "Check code"; btn.disabled = false;
+        var b = document.getElementById("signup-banner"); if (b) { b.textContent = "Can't reach the Agri-Pal server. Start the Java backend and try again."; b.hidden = false; }
+      }
+    });
+  }
+
+  // password strength
+  var pwInput = document.getElementById("signup-password");
+  if (pwInput) {
+    pwInput.addEventListener("input", function () {
+      var v = pwInput.value;
+      var segs = document.querySelectorAll("#signup .auth-strength span");
+      var score = 0;
+      if (v.length >= 8) score++;
+      if (/[a-zA-Z]/.test(v)) score++;
+      if (/\d/.test(v)) score++;
+      if (v.length >= 12) score++;
+      segs.forEach(function (s, i) { s.classList.toggle("ok", i < score); });
+    });
+  }
+
+  var eyeBtn2 = document.querySelector('#signup [data-toggle="signup-password"]');
+  if (eyeBtn2) eyeBtn2.addEventListener("click", function () {
+    var inp = document.getElementById("signup-password");
+    var show = inp.type === "password";
+    inp.type = show ? "text" : "password";
+    eyeBtn2.setAttribute("aria-pressed", show ? "true" : "false");
+  });
+
+  if (step2) {
+    var backLink = document.getElementById("signup-back");
+    if (backLink) backLink.addEventListener("click", function (e) { e.preventDefault(); showStep(1); });
+
+    step2.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      clearErrors(step2);
+      var name = document.getElementById("signup-name").value.trim();
+      var email = document.getElementById("signup-email").value.trim();
+      var password = document.getElementById("signup-password").value;
+      var confirm = document.getElementById("signup-confirm").value;
+      var ok = true;
+      if (name.length < 2 || name.length > 60) { fieldError(step2, "name", "Name must be 2-60 characters."); ok = false; }
+      if (!validateEmail(email)) { fieldError(step2, "email", "Enter a valid email."); ok = false; }
+      if (!validatePassword(password)) { fieldError(step2, "password", "8+ characters, a letter and a number."); ok = false; }
+      if (password !== confirm) { fieldError(step2, "confirm", "Passwords do not match."); ok = false; }
+      if (!ok) return;
+      var btn = document.getElementById("signup-create");
+      btn.disabled = true; btn.textContent = "Creating…";
+      try {
+        var res = await fetch(API_BASE + "/api/auth/register", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: name, email: email, password: password, botCode: botCode })
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (res.ok) {
+          setToken(data.token, true);
+          // success view
+          document.querySelectorAll("#signup .auth-step").forEach(function (s) { s.hidden = true; });
+          var succ = document.querySelector('#signup .auth-step[data-step="success"]');
+          if (succ) succ.hidden = false;
+          var nm = document.getElementById("signup-success-name");
+          if (nm) nm.textContent = "Welcome, " + (name.split(" ")[0] || name) + ".";
+          var bt = document.getElementById("signup-success-bot");
+          if (bt) bt.textContent = "Bot " + (botCode || "") + " is now linked to your account.";
+          btn.textContent = "Create account"; btn.disabled = false;
+          var goBtn = document.getElementById("signup-gonow");
+          if (goBtn) goBtn.addEventListener("click", function () { location.hash = sessionStorage.getItem("agripal_returnTo") || "#live-status"; });
+          setTimeout(function () {
+            location.hash = sessionStorage.getItem("agripal_returnTo") || "#live-status";
+            sessionStorage.removeItem("agripal_returnTo");
+          }, 1500);
+        } else {
+          btn.textContent = "Create account"; btn.disabled = false;
+          if (res.status === 409) {
+            fieldError(step2, "email", "An account with this email already exists.");
+          } else if (res.status === 400 && data.errors) {
+            Object.keys(data.errors).forEach(function (k) { fieldError(step2, k, data.errors[k]); });
+          } else {
+            var b = document.getElementById("signup-banner"); if (b) { b.textContent = data.message || "Registration failed."; b.hidden = false; }
+          }
+        }
+      } catch (err) {
+        btn.textContent = "Create account"; btn.disabled = false;
+        var b2 = document.getElementById("signup-banner"); if (b2) { b2.textContent = "Can't reach the Agri-Pal server. Start the Java backend and try again."; b2.hidden = false; }
+      }
+    });
+  }
+
+  /* ---------- Routing ---------- */
+  function handleHash() {
+    var h = location.hash;
+    if (h === "#login") { if (!loginView.classList.contains("is-open")) openView(loginView, null); }
+    else if (h === "#signup") { if (!signupView.classList.contains("is-open")) openView(signupView, null); }
+    else {
+      if (loginView.classList.contains("is-open")) closeView(loginView, true);
+      if (signupView.classList.contains("is-open")) closeView(signupView, true);
+    }
+  }
+  window.addEventListener("hashchange", handleHash);
+  window.addEventListener("popstate", handleHash);
+
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest && e.target.closest('a[href="#login"], a[href="#signup"]');
+    if (!t) return;
+    e.preventDefault();
+    location.hash = t.getAttribute("href");
+  });
+
+  // claim bot button -> signup
+  var claimBtn = document.getElementById("login-claim");
+  if (claimBtn) claimBtn.addEventListener("click", function () { location.hash = "#signup"; });
+
+  // initial
+  if (location.hash === "#login" || location.hash === "#signup") handleHash();
+})();

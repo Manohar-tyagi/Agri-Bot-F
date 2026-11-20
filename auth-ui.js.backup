@@ -1,0 +1,475 @@
+(function () {
+  "use strict";
+
+  var API_BASE = "http://localhost:8080";
+
+  /* ---------- Auth module ---------- */
+  var TOKEN_KEY = "agripal_token";
+  function getToken() { return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY); }
+  function setToken(tok, remember) {
+    if (remember) { localStorage.setItem(TOKEN_KEY, tok); sessionStorage.removeItem(TOKEN_KEY); }
+    else { sessionStorage.setItem(TOKEN_KEY, tok); localStorage.removeItem(TOKEN_KEY); }
+  }
+  function clearToken() { localStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(TOKEN_KEY); }
+
+  function authFetch(url, opts) {
+    opts = opts || {};
+    opts.headers = opts.headers || {};
+    var t = getToken();
+    if (t) opts.headers["Authorization"] = "Bearer " + t;
+    return fetch(url, opts);
+  }
+
+  async function apiMe() {
+    var res = await authFetch(API_BASE + "/api/auth/me");
+    if (res.status === 401) { clearToken(); return null; }
+    if (!res.ok) throw new Error("network");
+    return res.json();
+  }
+
+  /* ---------- Views ---------- */
+  var loginView = document.getElementById("login");
+  var signupView = document.getElementById("signup");
+
+  var crew = null;
+
+  function openView(view, ev) {
+    if (!view) return;
+    var other = (view === loginView) ? signupView : loginView;
+    if (other && other.classList.contains("is-open")) { closeView(other, true); }
+    if (window.AgriPalParticles && window.AgriPalParticles.isOpen()) try { window.AgriPalParticles.close(); } catch (e) {}
+    if (window.AgriPalUI && window.AgriPalUI.closeModal) try { window.AgriPalUI.closeModal(); } catch (e) {}
+    if (window.AgriPalNav) {
+      try { window.AgriPalNav.setOverlay(true); } catch (e) {}
+      try { window.AgriPalNav.setDark("dark"); } catch (e) {}
+    }
+    if (location.hash !== "#" + view.id) {
+      try { history.pushState({ auth: view.id }, "", "#" + view.id); } catch (e) { location.hash = "#" + view.id; }
+    }
+    view.setAttribute("aria-hidden", "false");
+    var origin = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    if (ev && ev.clientX) origin = { x: ev.clientX, y: ev.clientY };
+    var radius = Math.hypot(window.innerWidth, window.innerHeight) * 1.15;
+    view.style.setProperty("--c0", "circle(0px at " + origin.x + "px " + origin.y + "px)");
+    view.style.setProperty("--c1", "circle(" + radius + "px at " + origin.x + "px " + origin.y + "px)");
+    view.style.display = "block";
+    view.classList.remove("is-closing");
+    void view.offsetWidth;
+    view.classList.add("is-open");
+    // scroll to top
+    try { window.scrollTo(0, 0); } catch (e) {}
+    // crew instance
+    var switching = !!window.agripalCrew;
+    if (window.agripalCrew) { try { window.agripalCrew.destroy(); } catch (e) {} window.agripalCrew = null; crew = null; }
+    var wrap = view.querySelector(".crew-wrap");
+    if (wrap && window.LoginCrew) {
+      crew = window.LoginCrew.create(wrap);
+      window.agripalCrew = crew;
+      if (switching) { try { crew.hop(); crew.setState("idle"); } catch (e) {} }
+    }
+  }
+
+  function closeView(view, immediate) {
+    if (!view) return;
+    view.classList.remove("is-open");
+    if (window.agripalCrew) { try { window.agripalCrew.destroy(); } catch (e) {} window.agripalCrew = null; crew = null; }
+    if (immediate) { view.classList.remove("is-closing"); view.setAttribute("aria-hidden", "true"); view.style.display = "none"; return; }
+    view.classList.add("is-closing");
+    setTimeout(function () {
+      view.classList.remove("is-closing");
+      view.setAttribute("aria-hidden", "true");
+      view.style.display = "none";
+    }, 660);
+  }
+
+  function shakeCard(card) {
+    if (!card) return;
+    try {
+      card.animate([
+        { transform: "translateX(-7px)" },
+        { transform: "translateX(6px)" },
+        { transform: "translateX(-5px)" },
+        { transform: "translateX(3px)" },
+        { transform: "translateX(0px)" }
+      ], { duration: 500 });
+    } catch (e) {}
+  }
+
+  /* ---------- Form helpers ---------- */
+  function fieldError(form, name, msg) {
+    var el = form.querySelector('[data-for="' + name + '"]');
+    if (el) el.textContent = msg || "";
+    var wrap = null;
+    var input = form.querySelector('[name="' + name + '"]');
+    if (input) {
+      wrap = input.closest(".auth-field");
+      if (wrap) wrap.classList.toggle("is-invalid", !!msg);
+    }
+  }
+  function clearErrors(form) {
+    form.querySelectorAll(".auth-err").forEach(function (e) { e.textContent = ""; });
+    form.querySelectorAll(".auth-field").forEach(function (f) { f.classList.remove("is-invalid"); });
+  }
+
+  function validateEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+  function validatePassword(v) { return v.length >= 8 && /[a-zA-Z]/.test(v) && /\d/.test(v); }
+
+  /* ---------- Login form ---------- */
+  var loginForm = document.getElementById("login-form");
+  if (loginForm) {
+    var forgot = document.getElementById("login-forgot");
+    var forgotNote = document.getElementById("login-forgot-note");
+    if (forgot) forgot.addEventListener("click", function (e) { e.preventDefault(); if (forgotNote) forgotNote.hidden = false; });
+
+    // crew wiring: focus/blur on fields
+    var loginEmail = document.getElementById("login-email");
+    var loginPassword = document.getElementById("login-password");
+    function bindField(inp) {
+      if (!inp) return;
+      inp.addEventListener("focus", function () {
+        if (!window.agripalCrew) return;
+        if (inp.type === "password" || inp === loginPassword) {
+          window.agripalCrew.setState(inp.type === "text" ? "passwordShown" : "password", inp);
+        } else {
+          window.agripalCrew.setState("email", inp);
+        }
+      });
+      inp.addEventListener("blur", function () {
+        if (!window.agripalCrew) return;
+        setTimeout(function () {
+          var st = window.agripalCrew.getState();
+          var inField = document.activeElement && document.activeElement.closest(".field");
+          if (!inField && (st === "email" || st === "password" || st === "passwordShown")) window.agripalCrew.setState("idle");
+        }, 60);
+      });
+      inp.addEventListener("input", function () {
+        if (window.agripalCrew) window.agripalCrew.nudge();
+        if (!window.agripalCrew) return;
+        var st = window.agripalCrew.getState();
+        if (st === "error") {
+          if (inp === loginPassword) window.agripalCrew.setState(inp.type === "text" ? "passwordShown" : "password", inp);
+          else window.agripalCrew.setState("email", inp);
+        }
+      });
+    }
+    bindField(loginEmail);
+    bindField(loginPassword);
+
+    var eyeBtn = loginForm.querySelector('[data-toggle="login-password"]');
+    if (eyeBtn) eyeBtn.addEventListener("click", function () {
+      var inp = document.getElementById("login-password");
+      var show = inp.type === "password";
+      inp.type = show ? "text" : "password";
+      eyeBtn.setAttribute("aria-pressed", show ? "true" : "false");
+      if (window.agripalCrew) window.agripalCrew.setState(show ? "passwordShown" : "password", inp);
+    });
+
+    loginForm.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      clearErrors(loginForm);
+      var email = loginForm.querySelector('[name="email"]').value.trim();
+      var password = loginForm.querySelector('[name="password"]').value;
+      var remember = document.getElementById("login-remember").checked;
+      var ok = true;
+      if (!validateEmail(email)) { fieldError(loginForm, "email", "Enter a valid email."); ok = false; }
+      if (!password) { fieldError(loginForm, "password", "Password is required."); ok = false; }
+      if (!ok) {
+        if (window.agripalCrew) { window.agripalCrew.setState("error"); shakeCard(document.getElementById("login-card")); }
+        return;
+      }
+      var btn = document.getElementById("login-submit");
+      btn.disabled = true; btn.textContent = "Logging in…";
+      if (window.agripalCrew) window.agripalCrew.setState("submitting");
+      try {
+        var res = await fetch(API_BASE + "/api/auth/login", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email, password: password, remember: remember })
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (res.ok) {
+          setToken(data.token, remember);
+          btn.textContent = "Log in";
+          btn.disabled = false;
+          if (window.agripalCrew) window.agripalCrew.setState("success");
+          setTimeout(function () {
+            var ret = sessionStorage.getItem("agripal_returnTo") || "#live-status";
+            sessionStorage.removeItem("agripal_returnTo");
+            location.hash = ret;
+          }, 1000);
+        } else {
+          btn.textContent = "Log in";
+          btn.disabled = false;
+          if (window.agripalCrew) { window.agripalCrew.setState("error"); shakeCard(document.getElementById("login-card")); }
+          if (res.status === 401) {
+            fieldError(loginForm, "email", "Invalid email or password.");
+            fieldError(loginForm, "password", "Invalid email or password.");
+          } else if (res.status === 429) {
+            var b = document.getElementById("login-banner"); if (b) { b.textContent = "Too many attempts. Try again in a few minutes."; b.hidden = false; }
+          } else if (res.status === 400 && data.errors) {
+            Object.keys(data.errors).forEach(function (k) { fieldError(loginForm, k, data.errors[k]); });
+          } else {
+            var b2 = document.getElementById("login-banner"); if (b2) { b2.textContent = data.message || "Login failed."; b2.hidden = false; }
+          }
+        }
+      } catch (err) {
+        btn.textContent = "Log in";
+        btn.disabled = false;
+        if (window.agripalCrew) { window.agripalCrew.setState("error"); shakeCard(document.getElementById("login-card")); }
+        var b3 = document.getElementById("login-banner"); if (b3) { b3.textContent = "Can't reach the Agri-Pal server. Start the Java backend and try again."; b3.hidden = false; }
+      }
+    });
+  }
+
+  /* ---------- Signup ---------- */
+  var step1 = document.getElementById("signup-step1");
+  var step2 = document.getElementById("signup-step2");
+  var botCode = null, botName = null;
+
+  function showStep(n) {
+    document.querySelectorAll("#signup .auth-step").forEach(function (s) { s.hidden = true; });
+    var sel = document.querySelector('#signup .auth-step[data-step="' + n + '"]');
+    if (sel) sel.hidden = false;
+    // step bars
+    var bars = document.querySelectorAll("#signup .auth-stepbar");
+    bars.forEach(function (b, i) { b.classList.toggle("active", i < (n === 1 ? 1 : 2)); });
+    var label = document.querySelector("#signup .auth-steplabel");
+    if (label) label.textContent = (n === 1 ? "Step 1 of 2" : "Step 2 of 2");
+  }
+
+  // crew wiring for bot code field
+  var signupCode = document.getElementById("signup-code");
+  if (signupCode) {
+    signupCode.addEventListener("focus", function () {
+      if (window.agripalCrew) window.agripalCrew.setState("email", signupCode);
+    });
+    signupCode.addEventListener("blur", function () {
+      if (!window.agripalCrew) return;
+      setTimeout(function () {
+        var st = window.agripalCrew.getState();
+        var inField = document.activeElement && document.activeElement.closest(".field");
+        if (!inField && (st === "email" || st === "password" || st === "passwordShown")) window.agripalCrew.setState("idle");
+      }, 60);
+    });
+    signupCode.addEventListener("input", function () {
+      if (window.agripalCrew) window.agripalCrew.nudge();
+      if (!window.agripalCrew) return;
+      var st = window.agripalCrew.getState();
+      if (st === "error") window.agripalCrew.setState("email", signupCode);
+    });
+  }
+
+  if (step1) {
+    step1.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      clearErrors(step1);
+      var code = document.getElementById("signup-code").value.trim().toUpperCase();
+      var btn = document.getElementById("signup-check");
+      var ok = true;
+      if (!code) { fieldError(step1, "code", "Bot code is required."); ok = false; }
+      if (!ok) {
+        if (window.agripalCrew) { window.agripalCrew.setState("error"); shakeCard(document.getElementById("signup-card")); }
+        return;
+      }
+      btn.disabled = true; btn.textContent = "Checking…";
+      if (window.agripalCrew) window.agripalCrew.setState("submitting");
+      try {
+        var res = await fetch(API_BASE + "/api/bots/verify", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: code })
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (res.ok) {
+          botCode = code; botName = data.botName || data.name || "Bot";
+          var chip = document.getElementById("signup-chip");
+          if (chip) { chip.textContent = "Bot found: " + botName; chip.hidden = false; }
+          btn.textContent = "Check code"; btn.disabled = false;
+          if (window.agripalCrew) window.agripalCrew.setState("cheer");
+          setTimeout(function () { showStep(2); }, 600);
+        } else {
+          btn.textContent = "Check code"; btn.disabled = false;
+          if (window.agripalCrew) { window.agripalCrew.setState("error"); shakeCard(document.getElementById("signup-card")); }
+          fieldError(step1, "code", data.message || "Invalid code.");
+        }
+      } catch (err) {
+        btn.textContent = "Check code"; btn.disabled = false;
+        if (window.agripalCrew) { window.agripalCrew.setState("error"); shakeCard(document.getElementById("signup-card")); }
+        var b = document.getElementById("signup-banner"); if (b) { b.textContent = "Can't reach the Agri-Pal server. Start the Java backend and try again."; b.hidden = false; }
+      }
+    });
+  }
+
+  // password strength
+  var pwInput = document.getElementById("signup-password");
+  if (pwInput) {
+    pwInput.addEventListener("input", function () {
+      var v = pwInput.value;
+      var segs = document.querySelectorAll("#signup .auth-strength span");
+      var score = 0;
+      if (v.length >= 8) score++;
+      if (/[a-zA-Z]/.test(v)) score++;
+      if (/\d/.test(v)) score++;
+      if (v.length >= 12) score++;
+      segs.forEach(function (s, i) { s.classList.toggle("ok", i < score); });
+    });
+  }
+
+  var eyeBtn2 = document.querySelector('#signup [data-toggle="signup-password"]');
+  if (eyeBtn2) eyeBtn2.addEventListener("click", function () {
+    var inp = document.getElementById("signup-password");
+    var show = inp.type === "password";
+    inp.type = show ? "text" : "password";
+    eyeBtn2.setAttribute("aria-pressed", show ? "true" : "false");
+    if (window.agripalCrew) window.agripalCrew.setState(show ? "passwordShown" : "password", inp);
+  });
+
+  // crew wiring for step2 fields
+  function bindSignupField(inp, isPw) {
+    if (!inp) return;
+    inp.addEventListener("focus", function () {
+      if (!window.agripalCrew) return;
+      if (isPw) window.agripalCrew.setState(inp.type === "text" ? "passwordShown" : "password", inp);
+      else window.agripalCrew.setState("email", inp);
+    });
+    inp.addEventListener("blur", function () {
+      if (!window.agripalCrew) return;
+      setTimeout(function () {
+        var st = window.agripalCrew.getState();
+        var inField = document.activeElement && document.activeElement.closest(".field");
+        if (!inField && (st === "email" || st === "password" || st === "passwordShown")) window.agripalCrew.setState("idle");
+      }, 60);
+    });
+    inp.addEventListener("input", function () {
+      if (window.agripalCrew) window.agripalCrew.nudge();
+      if (!window.agripalCrew) return;
+      var st = window.agripalCrew.getState();
+      if (st === "error") {
+        if (isPw) window.agripalCrew.setState(inp.type === "text" ? "passwordShown" : "password", inp);
+        else window.agripalCrew.setState("email", inp);
+      }
+    });
+  }
+  bindSignupField(document.getElementById("signup-name"), false);
+  bindSignupField(document.getElementById("signup-email"), false);
+  bindSignupField(document.getElementById("signup-password"), true);
+  bindSignupField(document.getElementById("signup-confirm"), true);
+
+  if (step2) {
+    var backLink = document.getElementById("signup-back");
+    if (backLink) backLink.addEventListener("click", function (e) { e.preventDefault(); showStep(1); });
+
+    step2.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      clearErrors(step2);
+      var name = document.getElementById("signup-name").value.trim();
+      var email = document.getElementById("signup-email").value.trim();
+      var password = document.getElementById("signup-password").value;
+      var confirm = document.getElementById("signup-confirm").value;
+      var ok = true;
+      if (name.length < 2 || name.length > 60) { fieldError(step2, "name", "Name must be 2-60 characters."); ok = false; }
+      if (!validateEmail(email)) { fieldError(step2, "email", "Enter a valid email."); ok = false; }
+      if (!validatePassword(password)) { fieldError(step2, "password", "8+ characters, a letter and a number."); ok = false; }
+      if (password !== confirm) { fieldError(step2, "confirm", "Passwords do not match."); ok = false; }
+      if (!ok) {
+        if (window.agripalCrew) { window.agripalCrew.setState("error"); shakeCard(document.getElementById("signup-card")); }
+        return;
+      }
+      var btn = document.getElementById("signup-create");
+      btn.disabled = true; btn.textContent = "Creating…";
+      if (window.agripalCrew) window.agripalCrew.setState("submitting");
+      try {
+        var res = await fetch(API_BASE + "/api/auth/register", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: name, email: email, password: password, botCode: botCode })
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (res.ok) {
+          setToken(data.token, true);
+          // success view
+          document.querySelectorAll("#signup .auth-step").forEach(function (s) { s.hidden = true; });
+          var succ = document.querySelector('#signup .auth-step[data-step="success"]');
+          if (succ) succ.hidden = false;
+          var nm = document.getElementById("signup-success-name");
+          if (nm) nm.textContent = "Welcome, " + (name.split(" ")[0] || name) + ".";
+          var bt = document.getElementById("signup-success-bot");
+          if (bt) bt.textContent = "Bot " + (botCode || "") + " is now linked to your account.";
+          btn.textContent = "Create account"; btn.disabled = false;
+          if (window.agripalCrew) window.agripalCrew.setState("success");
+          var goBtn = document.getElementById("signup-gonow");
+          if (goBtn) goBtn.addEventListener("click", function () { location.hash = sessionStorage.getItem("agripal_returnTo") || "#live-status"; });
+          setTimeout(function () {
+            location.hash = sessionStorage.getItem("agripal_returnTo") || "#live-status";
+            sessionStorage.removeItem("agripal_returnTo");
+          }, 1500);
+        } else {
+          btn.textContent = "Create account"; btn.disabled = false;
+          if (window.agripalCrew) { window.agripalCrew.setState("error"); shakeCard(document.getElementById("signup-card")); }
+          if (res.status === 409) {
+            fieldError(step2, "email", "An account with this email already exists.");
+          } else if (res.status === 400 && data.errors) {
+            Object.keys(data.errors).forEach(function (k) { fieldError(step2, k, data.errors[k]); });
+          } else {
+            var b = document.getElementById("signup-banner"); if (b) { b.textContent = data.message || "Registration failed."; b.hidden = false; }
+          }
+        }
+      } catch (err) {
+        btn.textContent = "Create account"; btn.disabled = false;
+        if (window.agripalCrew) { window.agripalCrew.setState("error"); shakeCard(document.getElementById("signup-card")); }
+        var b2 = document.getElementById("signup-banner"); if (b2) { b2.textContent = "Can't reach the Agri-Pal server. Start the Java backend and try again."; b2.hidden = false; }
+      }
+    });
+  }
+
+  /* ---------- Routing ---------- */
+  function syncViews() {
+    var h = location.hash;
+    var isAuth = (h === "#login" || h === "#signup");
+    var main = document.getElementById("main");
+    if (main) main.style.display = isAuth ? "none" : "";
+    document.querySelectorAll(".pt-page").forEach(function (p) { p.style.display = isAuth ? "none" : ""; });
+    var footer = document.querySelector(".footer-site, .footer");
+    if (footer) footer.style.display = "";
+    try { document.body.style.background = isAuth ? "#f6f7f3" : ""; } catch (e) {}
+    // hide inactive auth view
+    if (loginView && h !== "#login" && !loginView.classList.contains("is-open")) loginView.style.display = "none";
+    if (signupView && h !== "#signup" && !signupView.classList.contains("is-open")) signupView.style.display = "none";
+  }
+  function handleHash() {
+    var h = location.hash;
+    syncViews();
+    if (h === "#login") {
+      if (signupView && signupView.classList.contains("is-open")) closeView(signupView, true);
+      if (loginView && !loginView.classList.contains("is-open")) openView(loginView, null);
+    } else if (h === "#signup") {
+      if (loginView && loginView.classList.contains("is-open")) closeView(loginView, true);
+      if (signupView && !signupView.classList.contains("is-open")) openView(signupView, null);
+    } else {
+      if (loginView && loginView.classList.contains("is-open")) closeView(loginView, true);
+      if (signupView && signupView.classList.contains("is-open")) closeView(signupView, true);
+    }
+  }
+  window.addEventListener("hashchange", handleHash);
+  window.addEventListener("popstate", handleHash);
+
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest && e.target.closest('a[href="#login"], a[href="#signup"]');
+    if (!t) return;
+    e.preventDefault();
+    location.hash = t.getAttribute("href");
+  });
+
+  // claim bot button -> signup
+  var claimBtn = document.getElementById("login-claim");
+  if (claimBtn) claimBtn.addEventListener("click", function () { location.hash = "#signup"; });
+
+  function restoreHomeSections() {
+    var main = document.getElementById("main");
+    if (main) main.style.display = "";
+    document.querySelectorAll(".pt-page").forEach(function (p) { p.style.display = ""; });
+    var footer = document.querySelector(".footer-site, .footer");
+    if (footer) footer.style.display = "";
+  }
+  window.AgriPalAuth = { closeAll: function () { if (loginView && loginView.classList.contains("is-open")) closeView(loginView, true); if (signupView && signupView.classList.contains("is-open")) closeView(signupView, true); restoreHomeSections(); }, restoreHomeSections: restoreHomeSections };
+
+  // initial
+  handleHash();
+})();

@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AGRI-PAL — Autonomous Field Robot</title>
+  <meta name="description" content="Agri-Pal is an autonomous line-following, obstacle-avoiding, crop-harvesting field robot. Explore the design, the build and the live status." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="live-backdrop.css" />
+  <link rel="stylesheet" href="live-contours.css" />
+  <link rel="stylesheet" href="auth-ui.css" />
+  <link rel="stylesheet" href="auth-gate.css" />
+</head>
+<body id="top" data-page="home">
+
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <!-- ============ NAVBAR: floating pill ============ -->
+  <header class="site-nav" id="site-nav" data-theme="light">
+    <a class="nav-logo" href="#top" data-modal="home">
+      <svg class="nav-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="12" />
+        <circle cx="16" cy="16" r="5" fill="#0d1014" />
+      </svg>
+      <span class="nav-name">Agri-Pal</span>
+    </a>
+    <nav class="nav-links" id="nav-links" aria-label="Primary">
+      <a href="#top" data-modal="home">Home</a>
+<a href="#components" data-modal="components">Components</a>
+      <a href="#specs" data-modal="specs">Specs</a>
+      <a href="#live-status" data-modal="status">Live Status</a>
+    </nav>
+    <span class="nav-auth" id="nav-auth"></span>
+    <a class="nav-cta" href="#contact" data-contact>Get in touch</a>
+    <button class="nav-burger" id="nav-burger" aria-expanded="false" aria-controls="nav-links" aria-label="Toggle navigation">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+
+  <main id="main">
+
+    <!-- ============ 1 · HERO / MOODBOARD ============ -->
+    <section class="hero moodboard">
+      <div class="mg-blobs" aria-hidden="true"><i></i><i></i><i></i></div>
+
+      <!-- hand-drawn accents (direct children of hero, centred % of hero container) -->
+      <div class="doodle-wrap aster" style="left: 30%; top: 24%;"><svg class="doodle-svg" viewBox="0 0 60 60" fill="none" aria-hidden="true">
+        <path d="M30 2v56M2 30h56M10 10l40 40M50 10L10 50" stroke-width="4" stroke-linecap="round"/>
+      </svg></div>
+      <div class="doodle-wrap swirl" style="left: 68%; top: 23%;"><svg class="doodle-svg" viewBox="0 0 120 90" fill="none" aria-hidden="true">
+        <path d="M84 6c26 8 6 42-20 32C40 28 16 46 26 68c8 18 44 14 58-4" stroke-width="4" stroke-linecap="round"/>
+      </svg></div>
+      <div class="doodle-wrap squiggle" style="left: 50%; top: 77%;"><svg class="doodle-svg" viewBox="0 0 220 18" fill="none" aria-hidden="true">
+        <path d="M2 12c18-10 30-10 44 0s26 10 44 0 30-10 44 0 26 10 42 2" stroke-width="5" stroke-linecap="round"/>
+      </svg></div>
+      <div class="doodle-wrap leaf" style="left: 8%; top: 49%;"><svg class="doodle-svg" viewBox="0 0 60 70" fill="none" aria-hidden="true">
+        <path d="M30 6c-6 14-6 30 0 44s14 20 0 44" stroke-width="4" stroke-linecap="round"/>
+        <path d="M18 30c-5-5-10-5-14 0s-5 10 0 14M42 30c5-5 10-5 14 0s5 10 0 14" stroke-width="3.5" stroke-linecap="round"/>
+      </svg></div>
+      <div class="doodle-wrap sparkle" style="left: 93%; top: 49%;"><svg class="doodle-svg" viewBox="0 0 38 38" fill="none" aria-hidden="true">
+        <path d="M19 2v16M3 19h16M10 10l8 8M28 10l-8 8" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="12" cy="12" r="2.5"/><circle cx="26" cy="26" r="2.5"/>
+      </svg></div>
+
+      <p class="kicker">Autonomous / Field Robot</p>
+
+      <div class="wordmark-wrap">
+        <h1 class="wordmark">Agri-Pal</h1>
+      </div>
+
+      <p class="tagline">Autonomous line-following, obstacle-avoiding, crop-harvesting robot.</p>
+
+      <!-- scattered photo thumbnails -->
+      <div class="thumb-cloud" aria-hidden="false">
+        <figure class="thumb t1">
+          <div class="thumb-img"><img src="assets/moodboard/thumb-robot-face.jpg" alt="Agri-Pal robot face detail" loading="lazy" width="320" height="240"/></div>
+          <figcaption class="thumb-caption">Robot face</figcaption>
+        </figure>
+        <figure class="thumb t2">
+          <div class="thumb-img"><img src="assets/moodboard/thumb-pcb-electronics.jpg" alt="PCB electronics close-up" loading="lazy" width="320" height="240"/></div>
+          <figcaption class="thumb-caption">Control board</figcaption>
+        </figure>
+        <figure class="thumb t3">
+          <div class="thumb-img"><img src="assets/moodboard/thumb-crop-rows.jpg" alt="Crop rows in a field" loading="lazy" width="320" height="240"/></div>
+          <figcaption class="thumb-caption">Field rows</figcaption>
+        </figure>
+        <figure class="thumb t4">
+          <div class="thumb-img"><img src="assets/moodboard/thumb-assembly-line.jpg" alt="Assembly line workshop" loading="lazy" width="320" height="240"/></div>
+          <figcaption class="thumb-caption">Assembly line</figcaption>
+        </figure>
+        <figure class="thumb t5">
+          <div class="thumb-img"><img src="assets/moodboard/thumb-seedlings.jpg" alt="Young seedlings sprouting" loading="lazy" width="320" height="240"/></div>
+          <figcaption class="thumb-caption">Seedlings</figcaption>
+        </figure>
+      </div>
+
+      <a class="discover" href="#assembly" aria-label="Discover the assembly">
+        <span>Discover</span>
+        <span class="cue-line" aria-hidden="true"></span>
+      </a>
+    </section>
+
+    <!-- ============ 2 · ASSEMBLY SHOWCASE ============ -->
+    <section id="assembly" class="asc-section">
+      <div class="asc-track" id="asc-track">
+        <div class="asc-stage" id="asc-stage">
+          <canvas id="bot-canvas" class="assembly-canvas" aria-label="Assembly animation — scroll to assemble the bot"></canvas>
+
+          <div class="asc-loader" id="asc-loader" role="status" aria-live="polite">
+            <span class="spinner" aria-hidden="true"></span>
+            <span id="asc-loader-label">Loading render frames…</span>
+          </div>
+
+          <p class="asc-caption" id="asc-caption">Scroll to assemble the bot</p>
+
+          <noscript>
+            <div class="noscript-fallback">
+              <img src="assets/frames/frame_120.jpg" alt="Assembled Agri-Pal robot" />
+              <span>Enable JavaScript to see the assembly animation. Here is the finished build.</span>
+            </div>
+          </noscript>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 3 · CAPABILITIES (pinned, scroll-driven) ============ -->
+    <section id="capabilities" class="cap-track-section">
+      <div class="cap-stage" id="cap-stage">
+        <div class="cap-wire reveal" aria-hidden="true">
+          <svg class="doodle aster" viewBox="0 0 60 60" fill="none">
+            <path d="M30 2v56M2 30h56M10 10l40 40M50 10L10 50" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+          <div class="robot-panel" id="robot-panel">
+            <canvas class="dot-robot" id="dot-robot" role="img" aria-label="Dot-built Agri-Pal robot"></canvas>
+          </div>
+        </div>
+
+        <div class="cap-content reveal">
+          <div class="cap-labels" id="cap-labels">
+            <div class="cap-label lit" id="cap-navigate" data-phase="0">
+              <span class="num">01</span>
+              <h3>Navigate</h3>
+              <p class="cap-sub">Line follower</p>
+              <p class="cap-desc">An IR sensor array reads the guide line and a PID loop adjusts motor speed in real time, keeping the bot centered on the row.</p>
+            </div>
+            <div class="cap-label" id="cap-detect" data-phase="1">
+              <span class="num">02</span>
+              <h3>Detect</h3>
+              <p class="cap-sub">Obstacle detection</p>
+              <p class="cap-desc">Ultrasonic sensing scans ahead. When something enters the safety distance, the bot halts or reroutes around it.</p>
+            </div>
+            <div class="cap-label" id="cap-harvest" data-phase="2">
+              <span class="num">03</span>
+              <h3>Harvest</h3>
+              <p class="cap-sub">Plucking</p>
+              <p class="cap-desc">A servo-driven arm with a gripper picks the ripe produce and places it in the collection tray.</p>
+            </div>
+          </div>
+          <p class="cap-tag">You focus on the field. It handles the row.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 4 · DARK FLIP — LIVE STATUS / SPECS ============ -->
+    <section id="live" class="section dark-flip">
+      <p class="flip-eyebrow">— System / Live status</p>
+
+      <div class="wire-model reveal">
+        <div class="wire-rotate" id="wire-rotate" role="img" aria-label="Interactive Agri-Pal wireframe — drag to rotate">
+          <svg viewBox="0 0 300 340" fill="none" stroke="#9aa4b2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="150" cy="40" r="22" stroke="#3ddc84" />
+            <path d="M150 62v34" />
+            <rect x="104" y="96" width="92" height="44" rx="10" stroke="#eef1f5" />
+            <path d="M104 118h-14v92h26M196 118h14v92h-26" />
+            <circle cx="76" cy="234" r="26" />
+            <circle cx="224" cy="234" r="26" />
+            <path d="M150 140v96" />
+            <rect x="96" y="236" width="54" height="28" rx="8" />
+            <rect x="150" y="236" width="54" height="28" rx="8" />
+            <path d="M150 264c-10 34-34 48-62 56M150 264c10 34 34 48 62 56" opacity=".35" />
+          </svg>
+        </div>
+        <p class="tele-caption">Live telemetry</p>
+      </div>
+
+      <div class="flip-content reveal">
+        <h2 class="flip-head">Built to work the row, <span class="glow">on its own.</span></h2>
+        <div class="flip-body">
+          <p>Agri-Pal drives the crop row with an IR line-following PID loop, watches for anything in its path with ultrasonic ranging, and reaches out to pluck ripe produce into its payload.</p>
+          <p>Telemetry below is pulled straight from the on-board controller over the local API.</p>
+        </div>
+
+        <div class="stat-rows" id="stat-rows">
+          <div class="stat-row">
+            <span class="stat-label"><span class="live-dot" aria-hidden="true"></span>Battery</span>
+            <span class="stat-value pulse" id="row-battery">—</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label"><span class="live-dot" aria-hidden="true"></span>Mode</span>
+            <span class="stat-value" id="row-mode">Standby</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label"><span class="live-dot" aria-hidden="true"></span>Last obstacle</span>
+            <span class="stat-value" id="row-obstacle">None</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label"><span class="live-dot" aria-hidden="true"></span>Items plucked</span>
+            <span class="stat-value pulse" id="row-plucked">0</span>
+          </div>
+        </div>
+
+        <div class="flip-cta">
+          <a class="btn btn-accent btn-arrow" href="#specs" data-modal="specs">
+            Explore full specs
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+          </a>
+          <a class="btn btn-dark" href="#live-status" data-modal="status">Open live dashboard</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="modal-root"></div>
+
+  <!-- ============ AUTH VIEWS ============ -->
+  <section id="login" class="auth-view" aria-hidden="true">
+    <div class="auth-shell">
+      <div class="auth-left">
+        <div class="crew-wrap"></div>
+      </div>
+      <div class="auth-card" id="login-card">
+        <div class="auth-logo">
+          <span class="auth-logo-mark"></span>
+        </div>
+        <h1 class="auth-title">Welcome back!</h1>
+        <p class="auth-sub">Please enter your details</p>
+        <form class="auth-form" id="login-form" novalidate>
+          <div class="auth-field field">
+            <input id="login-email" name="email" type="email" autocomplete="email" required />
+            <label for="login-email">Email</label>
+            <p class="auth-err" data-for="email"></p>
+          </div>
+          <div class="auth-field field auth-field--pw">
+            <input id="login-password" name="password" type="password" autocomplete="current-password" required />
+            <label for="login-password">Password</label>
+            <button type="button" class="auth-eye pw-toggle" aria-pressed="false" aria-label="Show password" data-toggle="login-password">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <p class="auth-err" data-for="password"></p>
+          </div>
+          <div class="auth-row">
+            <label class="auth-check"><input type="checkbox" id="login-remember" checked /> Remember me</label>
+            <a href="#" class="auth-link" id="login-forgot">Forgot password?</a>
+          </div>
+          <p class="auth-note" id="login-forgot-note" aria-live="polite" hidden>Password reset by email isn't set up yet. Ask your Agri-Pal admin to reset it, or create a new account with a new bot code.</p>
+          <button type="submit" class="auth-btn auth-btn--primary" id="login-submit">Log in</button>
+          <button type="button" class="auth-btn auth-btn--secondary" id="login-claim">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l3 3"/></svg>
+            Claim a bot with a code
+          </button>
+          <p class="auth-banner" id="login-banner" hidden></p>
+          <p class="auth-bottom">Don't have an account? <a href="#signup" class="auth-link">Sign up</a></p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section id="signup" class="auth-view" aria-hidden="true">
+    <div class="auth-shell">
+      <div class="auth-left">
+        <div class="crew-wrap"></div>
+      </div>
+      <div class="auth-card" id="signup-card">
+        <div class="auth-steps">
+          <span class="auth-stepbar"></span>
+          <span class="auth-stepbar"></span>
+        </div>
+        <p class="auth-steplabel">Step 1 of 2</p>
+        <div class="auth-step" data-step="1">
+          <h1 class="auth-title">Claim your bot</h1>
+          <p class="auth-sub">Enter the code that came with your bot</p>
+          <form class="auth-form" id="signup-step1" novalidate>
+            <div class="auth-field field">
+              <input id="signup-code" name="code" type="text" autocomplete="off" required />
+              <label for="signup-code">Bot code</label>
+              <p class="auth-hint">Demo code: AGRI-DEMO-0001</p>
+              <p class="auth-err" data-for="code"></p>
+            </div>
+            <div class="auth-chip" id="signup-chip" hidden></div>
+            <button type="submit" class="auth-btn auth-btn--primary" id="signup-check">Check code</button>
+          </form>
+        </div>
+        <div class="auth-step" data-step="2" hidden>
+          <h1 class="auth-title">Create your account</h1>
+          <p class="auth-sub">Set up your login</p>
+          <form class="auth-form" id="signup-step2" novalidate>
+            <div class="auth-field field">
+              <input id="signup-name" name="name" type="text" autocomplete="name" required />
+              <label for="signup-name">Name</label>
+              <p class="auth-err" data-for="name"></p>
+            </div>
+            <div class="auth-field field">
+              <input id="signup-email" name="email" type="email" autocomplete="email" required />
+              <label for="signup-email">Email</label>
+              <p class="auth-err" data-for="email"></p>
+            </div>
+            <div class="auth-field field auth-field--pw">
+              <input id="signup-password" name="password" type="password" autocomplete="new-password" required />
+              <label for="signup-password">Password</label>
+              <button type="button" class="auth-eye pw-toggle" aria-pressed="false" aria-label="Show password" data-toggle="signup-password">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+              <div class="auth-strength"><span></span><span></span><span></span><span></span></div>
+              <p class="auth-hint">8+ characters · a letter · a number</p>
+              <p class="auth-err" data-for="password"></p>
+            </div>
+            <div class="auth-field field">
+              <input id="signup-confirm" name="confirm" type="password" autocomplete="new-password" required />
+              <label for="signup-confirm">Confirm password</label>
+              <p class="auth-err" data-for="confirm"></p>
+            </div>
+            <div class="auth-row">
+              <a href="#" class="auth-link" id="signup-back">Back</a>
+            </div>
+            <button type="submit" class="auth-btn auth-btn--primary" id="signup-create">Create account</button>
+          </form>
+        </div>
+        <div class="auth-step" data-step="success" hidden>
+          <div class="auth-success">
+            <svg class="auth-check" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24" fill="none" stroke="#14a35c" stroke-width="3"/><path d="M14 27 L22 35 L38 19" fill="none" stroke="#14a35c" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <h1 class="auth-title" id="signup-success-name">Welcome!</h1>
+            <p class="auth-sub" id="signup-success-bot">Bot linked.</p>
+            <button type="button" class="auth-btn auth-btn--primary" id="signup-gonow">Go now</button>
+          </div>
+        </div>
+        <p class="auth-banner" id="signup-banner" hidden></p>
+        <p class="auth-bottom">Already have an account? <a href="#login" class="auth-link">Log in</a></p>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============ 5 · FOOTER ============ -->
+  <footer class="footer-site">
+    <div class="footer-cols">
+      <div class="footer-col">
+        <h4>Menu</h4>
+        <ul class="footer-links">
+          <li><a href="#top">Home</a></li>
+          <li><a href="#login">Log in</a></li>
+          <li><a href="#components" data-modal="components">Components</a></li>
+          <li><a href="#specs" data-modal="specs">Specs</a></li>
+          <li><a href="#live-status" data-modal="status">Live Status</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Capabilities</h4>
+        <ul class="footer-links">
+          <li><a href="#capabilities">Navigate</a></li>
+          <li><a href="#capabilities">Detect</a></li>
+          <li><a href="#capabilities">Harvest</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Contact</h4>
+        <p class="footer-contact">Questions or collaboration?<br /><a href="#contact" data-contact>hello@agripal.xyz</a></p>
+        <a class="footer-phone" href="tel:+918650666570">8650666570</a>
+      </div>
+    </div>
+
+    <div class="footer-wordmark" aria-hidden="true">Agri-Pal</div>
+
+    <div class="footer-bottom">
+      <span>© 2026 Agri-Pal · Autonomous Crop Harvesting Robot</span>
+    </div>
+  </footer>
+
+
+  <script src="ui.js"></script>
+  <script src="botshape.js"></script>
+  <script src="botrig.js"></script>
+  <script src="dotrobot.js"></script>
+  <script src="script.js"></script>
+  <script src="live-dashboard.js"></script>
+  <script src="specs.js"></script>
+  <script src="particles.js"></script>
+  <script src="live-backdrop.js"></script>
+  <script src="contours.js"></script>
+  <script src="live-contours.js"></script>
+  <script src="login-crew.js"></script>
+<script src="auth-ui.js"></script>
+  <script src="auth-gate.js"></script>
+</body>
+</html>
