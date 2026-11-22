@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var API_BASE = "http://localhost:8080";
+  var API_BASE = window.AGRIPAL_API_BASE || 'http://localhost:8080';
   var isHomePage = document.body && document.body.getAttribute("data-page") === "home";
 
   /* ==========================================================================
@@ -430,7 +430,7 @@
 
   function pollStatus() {
     if (!statusRows) return;
-    fetch("http://localhost:8080/api/status", { cache: "no-store" })
+    fetch((window.AGRIPAL_API_BASE || 'http://localhost:8080') + "/api/status", { cache: "no-store" })
       .then(function (res) { if (!res.ok) throw new Error("bad"); return res.json(); })
       .then(applyStatus)
       .catch(function () { setOffline(true); });

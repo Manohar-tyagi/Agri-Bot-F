@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var API_BASE = "http://localhost:8080";
+  var API_BASE = window.AGRIPAL_API_BASE || 'http://localhost:8080';
 
   /* ---------- Auth module ---------- */
   var TOKEN_KEY = "agripal_token";

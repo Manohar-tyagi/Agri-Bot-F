@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var API_URL = "http://localhost:8080/api/status";
+  var API_URL = (window.AGRIPAL_API_BASE || 'http://localhost:8080') + '/api/status';
   var MODE_VALUES = {
     LINE_FOLLOWING: "Driving",
     AVOIDING_OBSTACLE: "Blocked",

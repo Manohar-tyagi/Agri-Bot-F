@@ -21,7 +21,7 @@
     var t = getToken();
     if (!t) { user = null; renderNavAuth(); return; }
     try {
-      var res = await fetch("http://localhost:8080/api/auth/me", { headers: { "Authorization": "Bearer " + t } });
+      var res = await fetch((window.AGRIPAL_API_BASE || 'http://localhost:8080') + '/api/auth/me', { headers: { "Authorization": "Bearer " + t } });
       if (res.status === 401) { clearToken(); user = null; }
       else if (res.ok) { user = await res.json(); }
       else { user = null; }
