@@ -88,6 +88,12 @@
   display: inline-flex; align-items: center; justify-content: center;
   background: none; border: 0; cursor: pointer; padding: 6px; color: #5a6570;
 }
+
+.auth-field.is-password:focus-within label,
+.auth-field.is-password.has-value label,
+.auth-field.is-password:has(input:-webkit-autofill) label {
+  opacity: 0; visibility: hidden;
+}
 .auth-field--pw .auth-eye svg { width: 20px; height: 20px; }
 
 .auth-strength { display: flex; gap: 6px; margin-top: 6px; }

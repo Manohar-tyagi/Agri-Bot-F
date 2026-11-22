@@ -406,7 +406,11 @@
           btn.textContent = "Create account"; btn.disabled = false;
           if (window.agripalCrew) { window.agripalCrew.setState("error"); shakeCard(document.getElementById("signup-card")); }
           if (res.status === 409) {
-            fieldError(step2, "email", "An account with this email already exists.");
+            if (data && data.message && data.message.indexOf("claimed") !== -1) {
+              fieldError(step2, "code", data.message);
+            } else {
+              fieldError(step2, "email", "An account with this email already exists.");
+            }
           } else if (res.status === 400 && data.errors) {
             Object.keys(data.errors).forEach(function (k) { fieldError(step2, k, data.errors[k]); });
           } else {
@@ -483,6 +487,24 @@
   }
   setTimeout(floatAutofilled, 100);
   setTimeout(floatAutofilled, 500);
+
+  // password label hide on focus/value/autofill
+  function wirePasswordLabels() {
+    document.querySelectorAll(".auth-field.is-password input").forEach(function (inp) {
+      var field = inp.closest(".auth-field");
+      function update() {
+        if (inp.value || (inp.matches && inp.matches(":-webkit-autofill"))) field.classList.add("has-value");
+        else if (!inp.matches || !inp.matches(":focus")) field.classList.remove("has-value");
+      }
+      inp.addEventListener("focus", function () { field.classList.add("has-value"); });
+      inp.addEventListener("blur", function () { if (!inp.value) field.classList.remove("has-value"); });
+      inp.addEventListener("input", function () { if (inp.value) field.classList.add("has-value"); else field.classList.remove("has-value"); });
+      update();
+    });
+  }
+  wirePasswordLabels();
+  setTimeout(wirePasswordLabels, 100);
+  setTimeout(wirePasswordLabels, 500);
 
   // initial
   handleHash();
