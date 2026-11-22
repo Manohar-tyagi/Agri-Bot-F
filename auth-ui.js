@@ -472,6 +472,18 @@
   }
   window.AgriPalAuth = { closeAll: function () { if (loginView && loginView.classList.contains("is-open")) closeView(loginView, true); if (signupView && signupView.classList.contains("is-open")) closeView(signupView, true); restoreHomeSections(); }, restoreHomeSections: restoreHomeSections };
 
+  // float labels on autofill
+  function floatAutofilled() {
+    document.querySelectorAll(".auth-field input").forEach(function (inp) {
+      if (inp.value || (inp.matches && inp.matches(":-webkit-autofill"))) {
+        var lbl = inp.parentElement.querySelector("label");
+        if (lbl) { lbl.style.top = "0"; lbl.style.fontSize = "12px"; lbl.style.color = "#111418"; }
+      }
+    });
+  }
+  setTimeout(floatAutofilled, 100);
+  setTimeout(floatAutofilled, 500);
+
   // initial
   handleHash();
 })();
