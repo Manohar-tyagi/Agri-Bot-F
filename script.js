@@ -552,6 +552,9 @@
       try { gateToken = localStorage.getItem("agripal_token") || sessionStorage.getItem("agripal_token"); } catch (e) {}
       if (!gateToken) {
         try { sessionStorage.setItem("agripal_returnTo", key === "status" ? "#live-status" : "#simulation"); } catch (e) {}
+        e.__agriNavHandled = true;
+        e.preventDefault();
+        e.stopPropagation();
         location.hash = "#login";
         return;
       }
