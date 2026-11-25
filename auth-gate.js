@@ -138,11 +138,11 @@
         '<div class="glass-card dashboard" aria-hidden="true">' +
         '<div class="pt-live-head"><span class="pt-live-label">LIVE DASHBOARD</span><p class="pt-live-lede">Live readings from your bot.</p></div>' +
         '<div class="dash-grid">' +
-        '<div class="dash-tile"><div class="dash-label-row"><span class="dash-label">Battery</span></div><span class="dash-value">78%</span></div>' +
-        '<div class="dash-tile"><div class="dash-label-row"><span class="dash-label">Mode</span></div><span class="dash-value">Following the row</span></div>' +
-        '<div class="dash-tile"><div class="dash-label-row"><span class="dash-label">Last obstacle</span></div><span class="dash-value">24 cm</span></div>' +
-        '<div class="dash-tile"><div class="dash-label-row"><span class="dash-label">Items plucked</span></div><span class="dash-value">14</span></div>' +
-        '<div class="dash-tile"><div class="dash-label-row"><span class="dash-label">Row position</span></div><span class="dash-value">Row 3 of 12</span></div>' +
+        '<div class="dash-tile"><div class="dash-label-row"><span class="dash-label">Battery</span></div><span class="dash-value">—</span></div>' +
+        '<div class="dash-tile"><div class="dash-label-row"><span class="dash-label">Mode</span></div><span class="dash-value">Locked</span></div>' +
+        '<div class="dash-tile"><div class="dash-label-row"><span class="dash-label">Last obstacle</span></div><span class="dash-value">—</span></div>' +
+        '<div class="dash-tile"><div class="dash-label-row"><span class="dash-label">Items plucked</span></div><span class="dash-value">—</span></div>' +
+        '<div class="dash-tile"><div class="dash-label-row"><span class="dash-label">Row position</span></div><span class="dash-value">—</span></div>' +
         '</div></div>';
       panel = liveSection.querySelector(".glass-card.dashboard");
     }
