@@ -17,9 +17,15 @@
   }
 
   var user = null;
+  function updateProtectedNav() {
+    var authed = !!getToken();
+    document.querySelectorAll("[data-auth-required]").forEach(function (el) {
+      el.style.display = authed ? "" : "none";
+    });
+  }
   async function fetchMe() {
     var t = getToken();
-    if (!t) { user = null; renderNavAuth(); return; }
+    if (!t) { user = null; renderNavAuth(); updateProtectedNav(); return; }
     try {
       var res = await fetch((window.AGRIPAL_API_BASE || 'http://localhost:8080') + '/api/auth/me', { headers: { "Authorization": "Bearer " + t } });
       if (res.status === 401) { clearToken(); user = null; }
@@ -28,6 +34,7 @@
     } catch (e) { /* keep token on network error */ }
     renderNavAuth();
     updateLiveStatusLock();
+    updateProtectedNav();
   }
 
   function updateLiveStatusLock() {
@@ -214,6 +221,7 @@
   window.AgriPalAuth = { refresh: function () { fetchMe(); gateLiveStatus(); }, get user() { return user; } };
 
   // initial
+  updateProtectedNav();
   fetchMe();
   gateLiveStatus();
 })();

@@ -430,7 +430,10 @@
 
   function pollStatus() {
     if (!statusRows) return;
-    fetch((window.AGRIPAL_API_BASE || 'http://localhost:8080') + "/api/status", { cache: "no-store" })
+    var st = null;
+    try { st = localStorage.getItem("agripal_token") || sessionStorage.getItem("agripal_token"); } catch (e) {}
+    if (!st) return;
+    fetch((window.AGRIPAL_API_BASE || 'http://localhost:8080') + "/api/status", { cache: "no-store", headers: { "Authorization": "Bearer " + st } })
       .then(function (res) { if (!res.ok) throw new Error("bad"); return res.json(); })
       .then(applyStatus)
       .catch(function () { setOffline(true); });
@@ -448,7 +451,8 @@
     "#components": "components",
     "#specs": "specs",
     "#live-status": "status",
-    "#live": "status"
+    "#live": "status",
+    "#simulation": "simulation"
   };
 
   function setNavbarOverlay(on) {
@@ -482,7 +486,7 @@
   function updateTabIndicator(key) {
     var ind = document.getElementById("tab-indicator");
     if (!ind) return;
-    var order = ["components", "specs", "status"];
+    var order = ["components", "specs", "status", "simulation"];
     var idx = order.indexOf(key);
     var total = order.length;
     var cur = idx >= 0 ? idx + 1 : 0;
@@ -527,7 +531,8 @@
     }
     var homeMain = document.getElementById("main");
     if (homeMain) homeMain.style.display = "";
-    document.querySelectorAll(".pt-page").forEach(function (p) { p.style.display = ""; });
+    document.body.style.overflow = "";
+    document.querySelectorAll(".pt-page").forEach(function (p) { p.style.display = "none"; });
     var homeFooter = document.querySelector(".footer-site, .footer");
     if (homeFooter) homeFooter.style.display = "";
     if (window.AgriPalAuth && window.AgriPalAuth.restoreHomeSections) window.AgriPalAuth.restoreHomeSections();
@@ -541,14 +546,23 @@
     if (!trig) return;
     var key = trig.getAttribute("data-modal");
     if (window.AgriPalAuth && window.AgriPalAuth.closeAll) window.AgriPalAuth.closeAll();
-    if (!key || !tabKeyByHref["#" + key] && key !== "home" && key !== "components" && key !== "specs" && key !== "status") return;
+    if (!key || !tabKeyByHref["#" + key] && key !== "home" && key !== "components" && key !== "specs" && key !== "status" && key !== "simulation") return;
+    if (key === "status" || key === "simulation") {
+      var gateToken = null;
+      try { gateToken = localStorage.getItem("agripal_token") || sessionStorage.getItem("agripal_token"); } catch (e) {}
+      if (!gateToken) {
+        try { sessionStorage.setItem("agripal_returnTo", key === "status" ? "#live-status" : "#simulation"); } catch (e) {}
+        location.hash = "#login";
+        return;
+      }
+    }
     var modalKey = key;
     if (isContactOpen()) closeContactView(true);
     if (modalKey === "home") { e.__agriNavHandled = true; e.preventDefault(); e.stopPropagation(); returnHome(); return; }
     e.__agriNavHandled = true;
     e.preventDefault();
     e.stopPropagation();
-    var hashMap = { components: "#components", specs: "#specs", status: "#live-status" };
+    var hashMap = { components: "#components", specs: "#specs", status: "#live-status", simulation: "#simulation" };
     history.replaceState(null, "", hashMap[modalKey] || "#" + modalKey);
     setNavbarOverlay(true);
     switchTab(modalKey, e);
@@ -559,6 +573,15 @@
     var hash = location.hash;
     if (hash === "#contact") { openContactView(null, { fromHistory: true }); return; }
     if (isContactOpen()) closeContactView(true);
+    if (hash === "#live-status" || hash === "#simulation") {
+      var hGateToken = null;
+      try { hGateToken = localStorage.getItem("agripal_token") || sessionStorage.getItem("agripal_token"); } catch (e) {}
+      if (!hGateToken) {
+        try { sessionStorage.setItem("agripal_returnTo", hash); } catch (e) {}
+        location.hash = "#login";
+        return;
+      }
+    }
     var key = tabKeyByHref[hash];
     if (hash === "" || hash === "#top") { returnHome(); return; }
     if (key) {

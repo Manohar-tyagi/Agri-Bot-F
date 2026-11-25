@@ -1518,6 +1518,30 @@ figure.thumb:hover .thumb-caption { opacity: 1; transform: none; }
 .pt-rows-inner {
   /* width handled by .wrap-wide */
 }
+
+/* Simulation tab: full-viewport simulator below the fixed navbar */
+.pt-page.pt-sim-page {
+  background: #0b0e12;
+  overflow: hidden;
+}
+.pt-page.pt-sim-page .pt-inner,
+.pt-page.pt-sim-page .pt-story,
+.pt-page.pt-sim-page .pt-rows,
+.pt-page.pt-sim-page .pt-rows-inner {
+  margin: 0;
+  padding: 0;
+  max-width: none;
+  background: #0b0e12;
+}
+.pt-page.pt-sim-page .sim-frame {
+  position: fixed;
+  top: calc(var(--nav-h) + 14px);
+  left: 0;
+  width: 100vw !important;
+  height: calc(100vh - (var(--nav-h) + 14px)) !important;
+  border: 0;
+  display: block;
+}
 .pt-live-head { margin: 0 0 28px; }
 .pt-live-label {
   display: inline-block;

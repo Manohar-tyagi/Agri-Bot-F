@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agri-Pal 3D Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<script src="config.js?v=20"></script>
+<script>
+(function () {
+  var t = null;
+  try { t = localStorage.getItem('agripal_token') || sessionStorage.getItem('agripal_token'); } catch (e) {}
+  if (!t) { location.replace('index.html#login'); }
+})();
+</script><link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0e12; --panel:#12171d; --panel-2:#1a2028; --line:rgba(255,255,255,.09);
+  --ink:#eef2f5; --soft:#8a94a3; --accent:#3ddc84; --accent-deep:#0fa45c;
+  --warn:#ffb020; --bad:#ff4d4f; --blue:#4cc9f0;
+  --display:"Archivo Black","Arial Black",system-ui,sans-serif;
+  --body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--body);overflow:hidden;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.app{display:grid;grid-template-columns:1fr 380px;grid-template-rows:56px 1fr;height:100vh}
+header{grid-column:1/-1;display:flex;align-items:center;gap:16px;padding:0 20px;border-bottom:1px solid var(--line);background:var(--panel)}
+.brand{font-family:var(--display);font-size:18px;letter-spacing:.02em}
+.brand span{color:var(--accent)}
+.tag{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--soft)}
+.spacer{flex:1}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;background:var(--panel-2);border:1px solid var(--line);font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent)}
+.pill.warn .dot{background:var(--warn);box-shadow:0 0 10px var(--warn)}
+.pill.bad .dot{background:var(--bad);box-shadow:0 0 10px var(--bad)}
+.back{color:var(--soft);font-size:13px;text-decoration:none}
+.back:hover{color:var(--ink)}
+
+/* viewport */
+.view{position:relative;overflow:hidden;background:#cfe3ef}
+.view canvas{display:block;width:100%;height:100%}
+.hud{position:absolute;pointer-events:none;font-size:12px}
+.hud-tl{left:16px;top:16px;display:flex;flex-direction:column;gap:8px}
+.chip{background:rgba(11,14,18,.72);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.chip b{font-family:var(--display);font-size:16px;font-weight:400;display:block}
+.chip.api[data-ok=false] b{color:var(--warn)}.chip.api[data-ok=true] b{color:var(--accent)}
+.chip small{color:var(--soft);text-transform:uppercase;letter-spacing:.1em;font-size:10px}
+.cams{position:absolute;left:16px;bottom:16px;display:flex;gap:6px}
+.cams button{background:rgba(11,14,18,.72);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:12px;font-weight:600}
+.cams button[aria-pressed="true"]{background:var(--accent);color:#06140c;border-color:var(--accent)}
+.pip-label{position:absolute;right:24px;bottom:24px;pointer-events:none;font-size:10px;font-weight:700;letter-spacing:.14em;color:#fff;background:var(--bad);padding:2px 6px;border-radius:4px}
+.pip-label::before{content:"● ";animation:blink 1.2s infinite}
+@keyframes blink{50%{opacity:.2}}
+.log{position:absolute;left:50%;transform:translateX(-50%);bottom:16px;width:min(520px,46%);display:flex;flex-direction:column-reverse;gap:4px;pointer-events:none}
+.log div{background:rgba(11,14,18,.78);border-left:3px solid var(--accent);padding:6px 10px;border-radius:6px;font-size:12px;animation:fade 6s forwards}
+.log div.warn{border-color:var(--warn)} .log div.bad{border-color:var(--bad)}
+@keyframes fade{0%{opacity:0;transform:translateY(6px)}6%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
+.labels{position:absolute;inset:0;pointer-events:none}
+.labels div{position:absolute;transform:translate(-50%,-50%);background:rgba(11,14,18,.85);border:1px solid var(--accent);color:var(--ink);font-size:11px;font-weight:600;padding:3px 8px;border-radius:6px;white-space:nowrap}
+
+/* panel */
+aside{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+section{background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:14px}
+h2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--soft);margin-bottom:10px;display:flex;justify-content:space-between}
+h2 kbd{font:inherit;color:var(--soft);opacity:.7;letter-spacing:.04em;text-transform:none}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--bg);border-radius:10px;padding:4px;gap:4px}
+.seg button{padding:9px;border-radius:7px;font-weight:600;font-size:13px;color:var(--soft)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#06140c}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:200px;margin:0 auto}
+.btn{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;font-weight:600;font-size:13px;transition:background .12s,transform .06s;user-select:none;-webkit-user-select:none;touch-action:none}
+.btn:hover{background:#222a34}
+.btn:active,.btn.on{background:var(--accent);color:#06140c;transform:scale(.97)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.pad .btn{height:56px;font-size:20px}
+.stop{background:var(--bad)!important;color:#fff!important;border-color:var(--bad)!important;font-size:12px!important;letter-spacing:.06em}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.primary{background:var(--accent);color:#06140c;border-color:var(--accent)}
+.primary:hover{background:#5fe69c}
+label.sl{display:grid;grid-template-columns:72px 1fr 44px;align-items:center;gap:8px;font-size:12px;color:var(--soft);margin-top:8px}
+label.sl output{text-align:right;color:var(--ink);font-variant-numeric:tabular-nums}
+input[type=range]{accent-color:var(--accent);width:100%}
+.ir{display:flex;gap:8px;justify-content:center;margin:4px 0 10px}
+.ir i{width:26px;height:26px;border-radius:50%;background:#2a313b;border:2px solid #3a434f;transition:background .08s}
+.ir i.on{background:var(--bad);border-color:#ff8a8c;box-shadow:0 0 12px var(--bad)}
+.meter{height:10px;background:var(--bg);border-radius:6px;overflow:hidden}
+.meter span{display:block;height:100%;width:0;background:var(--accent);transition:width .15s,background .15s}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kv div{background:var(--bg);border-radius:10px;padding:10px}
+.kv small{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--soft)}
+.kv b{font-family:var(--display);font-weight:400;font-size:20px;font-variant-numeric:tabular-nums}
+.muted{color:var(--soft);font-size:12px}
+.sp{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--soft);margin-bottom:6px}
+.sp b{color:var(--ink);font-variant-numeric:tabular-nums}
+
+/* bill of materials */
+dialog#bom{margin:auto;width:min(1100px,94vw);max-height:88vh;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:18px;padding:0;display:none;flex-direction:column;box-shadow:0 40px 80px -20px rgba(0,0,0,.7)}
+dialog#bom[open]{display:flex}
+dialog#bom::backdrop{background:rgba(5,8,11,.7);backdrop-filter:blur(4px)}
+.bom-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:20px 22px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.bom-head h1{font-family:var(--display);font-weight:400;font-size:22px}
+.bom-actions{display:flex;gap:6px;align-items:center}
+.bom-actions input{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink);font:inherit;width:200px}
+.bom-scroll{overflow:auto;padding:0 22px 18px}
+#bom table{width:100%;border-collapse:collapse;font-size:13px}
+#bom thead th{position:sticky;top:0;background:var(--panel);text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--soft);padding:12px 8px;border-bottom:1px solid var(--line)}
+#bom td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+#bom tr.cat th{text-align:left;padding:16px 8px 6px;color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--line)}
+#bom .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+#bom td b{font-weight:600}
+.locate{color:var(--accent);font-size:12px;font-weight:600;white-space:nowrap;padding:2px 6px;border-radius:6px}
+.locate:hover{background:rgba(61,220,132,.12)}
+.bom-foot{margin-top:12px}
+@media print{
+  body{overflow:visible;background:#fff;color:#000}
+  .app{display:none}
+  dialog#bom{position:static;display:block;width:100%;max-height:none;border:0;box-shadow:none;background:#fff;color:#000}
+  .bom-actions,.locate{display:none}
+  .bom-scroll{overflow:visible}
+  #bom thead th{background:#fff;color:#444}
+  #bom tr.cat th{color:#0a7a40}
+  #bom td,#bom th{border-color:#ccc}
+  .muted{color:#555}
+}
+@media (max-width:900px){
+  body{overflow:auto}
+  .app{grid-template-columns:1fr;grid-template-rows:56px 60vh auto;height:auto}
+  aside{border-left:0}
+  .log{width:90%}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.min.js" } }
+</script>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">AGRI<span>-</span>PAL</div>
+    <div class="tag">3D Rover Simulator</div>
+    <div class="spacer"></div>
+    <div class="pill" id="statePill"><span class="dot"></span><span id="stateText">Standby</span></div>
+    <a class="back" href="index.html">← Back to site</a>
+  </header>
+
+  <main class="view" id="view">
+    <div class="labels" id="labels"></div>
+    <div class="hud hud-tl">
+      <div class="chip"><small>Ultrasonic</small><b id="hudDist">— cm</b></div>
+      <div class="chip"><small>Speed</small><b id="hudSpeed">0.00 m/s</b></div>
+      <div class="chip api"><small>Backend DB</small><b id="hudApi">…</b></div>
+    </div>
+    <div class="cams" role="group" aria-label="Camera view">
+      <button data-cam="orbit" aria-pressed="true">Orbit</button>
+      <button data-cam="chase" aria-pressed="false">Chase</button>
+      <button data-cam="top" aria-pressed="false">Top</button>
+      <button data-cam="studio" aria-pressed="false">Showcase</button>
+    </div>
+    <div class="pip-label">HEAD CAM</div>
+    <div class="log" id="log" aria-live="polite"></div>
+  </main>
+
+  <aside>
+    <section>
+      <h2>Mode <kbd>M</kbd></h2>
+      <div class="seg" role="group" aria-label="Drive mode">
+        <button id="modeManual" aria-pressed="true">Manual</button>
+        <button id="modeAuto" aria-pressed="false">Autonomous</button>
+      </div>
+      <p class="muted" style="margin-top:8px" id="modeHint">Drive with the pad or WASD / arrow keys.</p>
+    </section>
+
+    <section>
+      <h2>Drive <kbd>WASD · Space</kbd></h2>
+      <div class="pad">
+        <span></span><button class="btn drive" data-dir="f" aria-label="Forward">▲</button><span></span>
+        <button class="btn drive" data-dir="l" aria-label="Turn left">◀</button>
+        <button class="btn stop" id="btnStop">STOP</button>
+        <button class="btn drive" data-dir="r" aria-label="Turn right">▶</button>
+        <span></span><button class="btn drive" data-dir="b" aria-label="Reverse">▼</button><span></span>
+      </div>
+      <label class="sl">Max speed <input type="range" id="speed" min="0.2" max="1" step="0.05" value="0.55"><output id="speedOut">0.55</output></label>
+    </section>
+
+    <section>
+      <h2>Arm &amp; Harvest <kbd>P</kbd></h2>
+      <div class="row">
+        <button class="btn primary" id="btnPluck">🍅 Pluck ripe</button>
+        <button class="btn" id="btnGrip">✊ Close grip</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <button class="btn" id="btnHome">Arm home</button>
+        <button class="btn" id="btnWave">👋 Wave</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Sensors</h2>
+      <div class="sp"><span>IR line array (5×)</span><b id="irErr">—</b></div>
+      <div class="ir" id="ir"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="sp"><span>Ultrasonic HC-SR04</span><b id="usDist">— cm</b></div>
+      <div class="meter"><span id="usBar"></span></div>
+      <div class="sp" style="margin-top:10px"><span>Ripeness camera</span><b id="ripe">—</b></div>
+    </section>
+
+    <section>
+      <h2>Telemetry</h2>
+      <div class="kv">
+        <div><small>Battery</small><b id="tBatt">100%</b></div>
+        <div><small>Items plucked</small><b id="tPlucked">0</b></div>
+        <div><small>Distance</small><b id="tDist">0.0 m</b></div>
+        <div><small>Obstacles</small><b id="tObs">0</b></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Field &amp; View <kbd>X · C</kbd></h2>
+      <div class="row">
+        <button class="btn" id="btnXray" aria-pressed="false">🔍 Show internals</button>
+        <button class="btn" id="btnObstacle">🪨 Drop obstacle</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <button class="btn" id="btnClear">Clear obstacles</button>
+        <button class="btn" id="btnReset">↺ Reset field</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <button class="btn" id="btnNight" aria-pressed="false">🌙 Night mode</button>
+        <button class="btn primary" id="btnBom">📋 Bill of materials</button>
+      </div>
+    </section>
+  </aside>
+</div>
+<dialog id="bom" aria-labelledby="bomTitle">
+  <div class="bom-head">
+    <div>
+      <h1 id="bomTitle">Bill of Materials — Agri-Pal</h1>
+      <p class="muted" id="bomSummary"></p>
+    </div>
+    <div class="bom-actions">
+      <input type="search" id="bomSearch" placeholder="Search parts…" aria-label="Search parts">
+      <button class="btn" id="bomCsv">⬇ CSV</button>
+      <button class="btn" id="bomPrint">🖨 Print / PDF</button>
+      <button class="btn" id="bomClose" aria-label="Close">✕</button>
+    </div>
+  </div>
+  <div class="bom-scroll">
+    <table>
+      <thead><tr><th class="num">#</th><th>Item</th><th>Specification / purpose</th><th class="num">Qty</th><th class="num">Unit</th><th class="num">Total</th><th></th></tr></thead>
+      <tbody id="bomBody"></tbody>
+    </table>
+    <p class="muted bom-foot"><b>Tools required (not in total):</b> <span id="bomTools"></span></p>
+    <p class="muted bom-foot">Prices are approximate Indian online retail and will vary by seller — verify before ordering.</p>
+  </div>
+</dialog>
+<script type="module" src="simulator.js"></script>
+</body>
+</html>

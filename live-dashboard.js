@@ -357,7 +357,7 @@
 
     function pollStatus() {
       if (!visible || isEmpty) return;
-      fetch(API_URL, { cache: "no-store" })
+      fetch(API_URL, { cache: "no-store", headers: (function () { var t = null; try { t = localStorage.getItem("agripal_token") || sessionStorage.getItem("agripal_token"); } catch (e) {} return t ? { "Authorization": "Bearer " + t } : {}; })() })
         .then(function (res) {
           if (!res.ok) throw new Error("HTTP " + res.status);
           return res.json();

@@ -16,7 +16,7 @@
     components: {
       num: "01",
       label: "COMPONENTS",
-      bread: "[ 01 / 03 ] — HARDWARE BREAKDOWN",
+      bread: "[ 01 / 04 ] — HARDWARE BREAKDOWN",
       tag: "HARDWARE × SOFTWARE",
       big: "Under the hood",
       desc: "Eight subsystems — chassis and drive, line following, obstacle sensing, the harvesting arm, power, control, sensors and connectivity — working as one field robot.",
@@ -38,7 +38,7 @@
     specs: {
       num: "02",
       label: "SPECS",
-      bread: "[ 02 / 03 ] — THE BUILD SHEET",
+      bread: "[ 02 / 04 ] — THE BUILD SHEET",
       tag: "MECHANICS × ELECTRONICS",
       big: "The build sheet",
       desc: "The numbers behind the bot: laser-cut acrylic chassis, differential drive, weighted IR line sensing, ultrasonic obstacle scan and the Spring Boot telemetry pipeline.",
@@ -48,12 +48,22 @@
     status: {
       num: "03",
       label: "LIVE STATUS",
-      bread: "[ 03 / 03 ] — LIVE TELEMETRY",
+      bread: "[ 03 / 04 ] — LIVE TELEMETRY",
       tag: "LOCAL API × DASHBOARD",
       big: "Live telemetry",
       desc: "Battery, mode, obstacle count and harvests stream from the on-board controller over the local Spring Boot API — with a graceful offline state when it isn't running.",
       figCap: "FIG. 03 / TELEMETRY VIEW",
       figNote: "Status packets flow from the controller to the Spring Boot API and out to this dashboard."
+    },
+    simulation: {
+      num: "04",
+      label: "SIMULATION",
+      bread: "[ 04 / 04 ] — 3D SIMULATION",
+      tag: "THREE.JS × LIVE TELEMETRY",
+      big: "Low-poly simulation",
+      desc: "Drive and watch the Agri-Pal rover in a 3D field. Telemetry syncs back to the live dashboard.",
+      figCap: "FIG. 04 / SIMULATION VIEW",
+      figNote: "The 3D rover pushes telemetry to the Spring Boot API."
     }
   };
 
@@ -583,6 +593,7 @@
     h += '<section class="pt-rows">';
     if (key === "components") h += componentsMarkup();
     else if (key === "status") h += '<div class="pt-rows-inner">' + liveDashboardMarkup() + '</div>';
+    else if (key === "simulation") h += '<div class="pt-rows-inner"><iframe class="sim-frame" src="simulator.html" title="Agri-Pal 3D simulator" loading="eager" style="border:0;background:#0b0e12;"></iframe></div>';
     h += "</section>";
     return h;
   }
@@ -592,7 +603,7 @@
     return (
       '<section class="pt-foot"><div class="pt-foot-inner"><p>Agri-Pal / section ' +
       info.num +
-      " of 03</p><b>Designed for the field</b></div></section>"
+      " of 04</p><b>Designed for the field</b></div></section>"
     );
   }
 
@@ -642,7 +653,12 @@
     page.setAttribute("role", "dialog");
     page.setAttribute("aria-modal", "true");
 
-    if (REDUCED) {
+    if (key === "simulation") {
+      page.classList.add("pt-sim-page");
+      page.innerHTML =
+        '<button class="pt-close" aria-label="Close intro">&times;</button>' +
+        '<div class="pt-inner"><div class="pt-story">' + storyMarkup(key) + '</div></div>';
+    } else if (REDUCED) {
       page.setAttribute("data-calm", "");
       page.innerHTML =
         '<button class="pt-close" aria-label="Close intro">&times;</button>' +
@@ -695,15 +711,18 @@
       }, 60);
     }
 
-    if (REDUCED) {
-      var swap = page.querySelector(".pt-swap");
-      var botBox = page.querySelector(".pt-bot-box");
-      if (swap && botBox) {
-        swap.addEventListener("click", function () {
-          botBox.hidden = !botBox.hidden;
-          swap.textContent = botBox.hidden ? "See it as the bot" : "Back to the label";
-        });
+    if (REDUCED || key === "simulation") {
+      if (REDUCED) {
+        var swap = page.querySelector(".pt-swap");
+        var botBox = page.querySelector(".pt-bot-box");
+        if (swap && botBox) {
+          swap.addEventListener("click", function () {
+            botBox.hidden = !botBox.hidden;
+            swap.textContent = botBox.hidden ? "See it as the bot" : "Back to the label";
+          });
+        }
       }
+      if (key === "simulation") running = true;
       page.dataset.ready = "1";
       return;
     }
@@ -746,6 +765,7 @@
 
   function applyKey(key) {
     var info = INFO[key];
+    if (page) page.classList.toggle("pt-sim-page", key === "simulation");
     var story = page.querySelector(".pt-story");
     var part = page.querySelector(".pt-part");
     stopLiveDashboard();
@@ -754,6 +774,10 @@
     if (part) part.textContent = info.num + " / " + info.label;
     var foot = page.querySelector(".pt-foot");
     if (foot) foot.outerHTML = footMarkup(key);
+    var stage = page.querySelector(".pt-stage");
+    if (stage) stage.style.display = (key === "simulation") ? "none" : "";
+    var foot2 = page.querySelector(".pt-foot");
+    if (foot2) foot2.style.display = (key === "simulation") ? "none" : "";
     currentKey = key;
     page.scrollTop = 0;
     if (key === "components") animateComponentTiles(page);
@@ -782,6 +806,15 @@
   }
 
   function open(key, ev) {
+    if (key === "status" || key === "simulation") {
+      var gateTok = null;
+      try { gateTok = localStorage.getItem("agripal_token") || sessionStorage.getItem("agripal_token"); } catch (e) {}
+      if (!gateTok) {
+        try { sessionStorage.setItem("agripal_returnTo", key === "status" ? "#live-status" : "#simulation"); } catch (e) {}
+        location.hash = "#login";
+        return;
+      }
+    }
     if (running) {
       if (key === currentKey) { if (page) page.scrollTop = 0; return; }
       applyKey(key);
